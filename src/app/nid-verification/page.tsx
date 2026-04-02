@@ -13,6 +13,7 @@ export default function NIDVerificationPage() {
   const [nidBack, setNidBack] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const nidFrontRef = useRef<HTMLInputElement>(null);
@@ -34,6 +35,13 @@ export default function NIDVerificationPage() {
     }
   }, []);
 
+  // Attach stream to video element once the camera modal is rendered in the DOM
+  useEffect(() => {
+    if (isCameraActive && activeStream && videoRef.current) {
+      videoRef.current.srcObject = activeStream;
+    }
+  }, [isCameraActive, activeStream]);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, setFile: React.Dispatch<React.SetStateAction<File | null>>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -48,33 +56,26 @@ export default function NIDVerificationPage() {
 
   const handleTakeLivePhoto = async () => {
     try {
-      // Check for camera availability
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const hasCamera = devices.some(device => device.kind === 'videoinput');
-
-      if (!hasCamera) {
-        alert('No camera detected on your device. Please use the file upload option instead.');
-        return;
-      }
-
       // Request camera permission and access
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
 
+      // Store stream in both ref and state, then open modal
+      // The useEffect will wire up the stream to the video element after the modal renders
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraActive(true);
-      }
+      setActiveStream(stream);
+      setIsCameraActive(true);
     } catch (error: any) {
-      if (error.name === 'NotAllowedError') {
-        alert('Camera permission denied. Please allow access to your camera.');
-      } else if (error.name === 'NotFoundError') {
-        alert('No camera found on your device.');
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Camera permission denied. Please allow access to your camera in your browser settings and try again.');
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        alert('No camera found on your device. Please use the file upload option instead.');
+      } else if (error.name === 'NotReadableError') {
+        alert('Camera is already in use by another application. Please close it and try again.');
       } else {
-        alert('Unable to access camera. Please try again.');
+        alert(`Unable to access camera: ${error.message || 'Unknown error'}. Please try again.`);
       }
     }
   };
@@ -103,6 +104,7 @@ export default function NIDVerificationPage() {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    setActiveStream(null);
     setIsCameraActive(false);
   };
 
@@ -149,11 +151,30 @@ export default function NIDVerificationPage() {
       // Save to localStorage
       localStorage.setItem('nidVerificationData', JSON.stringify(submissionData));
 
+      // Persist user credentials to a persistent accounts store so login works
+      const existingAccounts = JSON.parse(localStorage.getItem('ustaad_accounts') || '[]');
+      const alreadyExists = existingAccounts.some((acc: any) => acc.email === userData.email);
+      if (!alreadyExists) {
+        existingAccounts.push({
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phone: userData.phone,
+          password: userData.password,
+          userType: userData.userType,
+          registeredAt: new Date().toISOString(),
+        });
+        localStorage.setItem('ustaad_accounts', JSON.stringify(existingAccounts));
+      }
+
+      // Clear the temporary registration data
+      localStorage.removeItem('registrationData');
+
       // Show success message
-      alert('✓ Your verification documents have been submitted successfully!\n\nWe will verify your identity within 24 hours.');
-      
-      // Redirect to dashboard or booking confirmation
-      router.push('/booking-confirmation');
+      alert('✓ Your account has been created successfully!\n\nYour identity documents will be verified within 24 hours. Please log in to continue.');
+
+      // Redirect to login page
+      router.push('/login');
     } catch (error) {
       console.error('Submission error:', error);
       alert('Failed to submit verification. Please try again.');
