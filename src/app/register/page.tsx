@@ -45,18 +45,38 @@ export default function RegisterPage() {
                 <span className="font-[family-name:var(--font-headline)] text-sm font-bold text-on-surface-variant">Garage Owner</span>
               </button>
             </div>
-            <form className="space-y-5">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const userData = {
+                  firstName: formData.get('firstName'),
+                  lastName: formData.get('lastName'),
+                  email: formData.get('email'),
+                  phone: formData.get('phone'),
+                  password: formData.get('password'),
+                  userType: 'car-owner',
+                };
+                
+                // Save to localStorage for the next step
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('registrationData', JSON.stringify(userData));
+                  // Navigate to NID verification page
+                  window.location.href = '/nid-verification';
+                }
+              }}
+              className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant ml-1">First Name</label>
                   <div className="input-glow group flex items-center bg-surface-container-highest border border-outline-variant rounded-xl px-4 py-3.5 transition-all focus-within:border-primary">
-                    <input className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="Stellar" type="text" />
+                    <input name="firstName" required className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="Stellar" type="text" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant ml-1">Last Name</label>
                   <div className="input-glow group flex items-center bg-surface-container-highest border border-outline-variant rounded-xl px-4 py-3.5 transition-all focus-within:border-primary">
-                    <input className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="Navigator" type="text" />
+                    <input name="lastName" required className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="Navigator" type="text" />
                   </div>
                 </div>
               </div>
@@ -64,26 +84,26 @@ export default function RegisterPage() {
                 <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant ml-1">Email</label>
                 <div className="input-glow group flex items-center bg-surface-container-highest border border-outline-variant rounded-xl px-4 py-3.5 transition-all focus-within:border-primary">
                   <span className="material-symbols-outlined text-outline group-focus-within:text-primary mr-3 text-xl">alternate_email</span>
-                  <input className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="navigator@ustaad.io" type="email" />
+                  <input name="email" required className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="navigator@ustaad.io" type="email" />
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant ml-1">Phone Number</label>
                 <div className="input-glow group flex items-center bg-surface-container-highest border border-outline-variant rounded-xl px-4 py-3.5 transition-all focus-within:border-primary">
                   <span className="material-symbols-outlined text-outline group-focus-within:text-primary mr-3 text-xl">phone</span>
-                  <input className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="+880 1XXX-XXXXXX" type="tel" />
+                  <input name="phone" required className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="+880 1XXX-XXXXXX" type="tel" />
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant ml-1">Password</label>
                 <div className="input-glow group flex items-center bg-surface-container-highest border border-outline-variant rounded-xl px-4 py-3.5 transition-all focus-within:border-primary">
                   <span className="material-symbols-outlined text-outline group-focus-within:text-primary mr-3 text-xl">lock</span>
-                  <input className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="••••••••" type="password" />
+                  <input name="password" required className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="••••••••" type="password" />
                 </div>
               </div>
-              <Link href="/nid-verification" className="block w-full text-center bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold py-4 rounded-xl shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98] transition-all font-[family-name:var(--font-headline)] tracking-tight mt-4">
+              <button type="submit" className="block w-full text-center bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold py-4 rounded-xl shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98] transition-all font-[family-name:var(--font-headline)] tracking-tight mt-4 hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)]">
                 Create Account
-              </Link>
+              </button>
             </form>
             <p className="text-center mt-8 text-sm text-on-surface-variant">
               Already a navigator? <Link className="text-primary-dim font-bold hover:underline" href="/login">Login</Link>
