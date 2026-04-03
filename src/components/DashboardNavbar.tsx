@@ -14,6 +14,7 @@ export default function DashboardNavbar({ userType = "car-owner" }: { userType?:
 
   return (
     <header className="fixed top-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-xl">
+      <div className="fixed right-4 top-4 z-50 text-xs text-on-surface-variant">{userType}</div>
       <div className="flex justify-between items-center px-8 py-4 max-w-[1440px] mx-auto">
         <div className="flex items-center gap-12">
           <Link
