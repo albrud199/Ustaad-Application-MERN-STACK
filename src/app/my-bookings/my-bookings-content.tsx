@@ -177,7 +177,7 @@ export default function MyBookingsContent() {
           <div className="glass-card rounded-xl p-6 bg-gradient-to-br from-indigo-500/10 to-transparent border border-outline-variant/10">
             <span className="material-symbols-outlined text-primary mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>help</span>
             <h4 className="font-[family-name:var(--font-headline)] font-bold text-lg mb-2 text-on-surface">Need a pilot?</h4>
-            <p className="text-sm text-on-surface-variant mb-6">Our mission control is available 24/7 to help with reservation adjustments.</p>
+            <p className="text-sm text-on-surface-variant mb-6">Our mission control is available 24/7 to-help with reservation adjustments.</p>
             <Link href="/help" className="w-full block text-center py-2.5 rounded-lg bg-surface-container-highest text-primary font-semibold hover:bg-primary-container/20 transition-all border border-primary/20">Contact Radar</Link>
           </div>
         </div>
