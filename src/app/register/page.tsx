@@ -2,8 +2,31 @@
 
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const [selectedRole, setSelectedRole] = useState<UserRole>("car-owner");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const userData = {
+      firstName: formData.get("firstName"),
+      lastName: formData.get("lastName"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
+      password: formData.get("password"),
+      userType: selectedRole,
+    };
+
+    // Save to localStorage for the NID verification step
+    localStorage.setItem("registrationData", JSON.stringify(userData));
+    router.push("/nid-verification");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative">
       <NebulaBackground />
@@ -31,38 +54,57 @@ export default function RegisterPage() {
               <h2 className="font-[family-name:var(--font-headline)] text-3xl font-bold text-on-surface mb-2">Create Account</h2>
               <p className="text-on-surface-variant font-[family-name:var(--font-label)] text-sm tracking-tight">Begin your celestial navigation journey.</p>
             </div>
+
             {/* Role Selection */}
             <div className="grid grid-cols-2 gap-4 mb-8">
-              <button className="p-4 rounded-xl border-2 border-primary/40 bg-primary/5 flex flex-col items-center gap-2 transition-all hover:bg-primary/10">
-                <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>directions_car</span>
-                <span className="font-[family-name:var(--font-headline)] text-sm font-bold text-primary">Car Owner</span>
+              <button
+                type="button"
+                onClick={() => setSelectedRole("car-owner")}
+                className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all border-2 ${
+                  selectedRole === "car-owner"
+                    ? "border-primary bg-primary/10 shadow-[0_0_20px_rgba(163,166,255,0.2)]"
+                    : "border-outline-variant/30 bg-surface-container-high hover:border-primary/40 hover:bg-primary/5"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined text-3xl transition-colors ${selectedRole === "car-owner" ? "text-primary" : "text-on-surface-variant"}`}
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  directions_car
+                </span>
+                <span className={`font-[family-name:var(--font-headline)] text-sm font-bold transition-colors ${selectedRole === "car-owner" ? "text-primary" : "text-on-surface-variant"}`}>
+                  Car Owner
+                </span>
+                {selectedRole === "car-owner" && (
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70 font-[family-name:var(--font-label)]">Selected</span>
+                )}
               </button>
-              <button className="p-4 rounded-xl border border-outline-variant/30 bg-surface-container-high flex flex-col items-center gap-2 transition-all hover:border-secondary/40 hover:bg-secondary/5">
-                <span className="material-symbols-outlined text-secondary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>garage</span>
-                <span className="font-[family-name:var(--font-headline)] text-sm font-bold text-on-surface-variant">Garage Owner</span>
+
+              <button
+                type="button"
+                onClick={() => setSelectedRole("garage-owner")}
+                className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all border-2 ${
+                  selectedRole === "garage-owner"
+                    ? "border-secondary bg-secondary/10 shadow-[0_0_20px_rgba(246,115,183,0.2)]"
+                    : "border-outline-variant/30 bg-surface-container-high hover:border-secondary/40 hover:bg-secondary/5"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined text-3xl transition-colors ${selectedRole === "garage-owner" ? "text-secondary" : "text-on-surface-variant"}`}
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  garage
+                </span>
+                <span className={`font-[family-name:var(--font-headline)] text-sm font-bold transition-colors ${selectedRole === "garage-owner" ? "text-secondary" : "text-on-surface-variant"}`}>
+                  Garage Owner
+                </span>
+                {selectedRole === "garage-owner" && (
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-secondary/70 font-[family-name:var(--font-label)]">Selected</span>
+                )}
               </button>
             </div>
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const userData = {
-                  firstName: formData.get('firstName'),
-                  lastName: formData.get('lastName'),
-                  email: formData.get('email'),
-                  phone: formData.get('phone'),
-                  password: formData.get('password'),
-                  userType: 'car-owner',
-                };
-                
-                // Save to localStorage for the next step
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('registrationData', JSON.stringify(userData));
-                  // Navigate to NID verification page
-                  window.location.href = '/nid-verification';
-                }
-              }}
-              className="space-y-5">
+
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant ml-1">First Name</label>
@@ -95,10 +137,33 @@ export default function RegisterPage() {
                 <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant ml-1">Password</label>
                 <div className="input-glow group flex items-center bg-surface-container-highest border border-outline-variant rounded-xl px-4 py-3.5 transition-all focus-within:border-primary">
                   <span className="material-symbols-outlined text-outline group-focus-within:text-primary mr-3 text-xl">lock</span>
-                  <input name="password" required className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="••••••••" type="password" />
+                  <input name="password" required className="bg-transparent border-none outline-none focus:ring-0 text-on-surface w-full font-[family-name:var(--font-body)] placeholder:text-outline" placeholder="••••••••" type={showPassword ? "text" : "password"} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-outline hover:text-on-surface transition-colors">
+                    <span className="material-symbols-outlined text-xl">{showPassword ? "visibility_off" : "visibility"}</span>
+                  </button>
                 </div>
               </div>
-              <button type="submit" className="block w-full text-center bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold py-4 rounded-xl shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98] transition-all font-[family-name:var(--font-headline)] tracking-tight mt-4 hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)]">
+
+              {/* Selected role indicator */}
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest font-[family-name:var(--font-label)] border ${
+                selectedRole === "garage-owner"
+                  ? "text-secondary border-secondary/20 bg-secondary/5"
+                  : "text-primary border-primary/20 bg-primary/5"
+              }`}>
+                <span className="material-symbols-outlined text-sm">
+                  {selectedRole === "garage-owner" ? "garage" : "directions_car"}
+                </span>
+                Registering as: {selectedRole === "garage-owner" ? "Garage Owner" : "Car Owner"}
+              </div>
+
+              <button
+                type="submit"
+                className={`block w-full text-center font-bold py-4 rounded-xl active:scale-[0.98] transition-all font-[family-name:var(--font-headline)] tracking-tight mt-2 ${
+                  selectedRole === "garage-owner"
+                    ? "bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed shadow-[0_8px_24px_rgba(246,115,183,0.3)] hover:shadow-[0_12px_32px_rgba(246,115,183,0.4)]"
+                    : "bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed shadow-[0_8px_24px_rgba(99,102,241,0.3)] hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)]"
+                }`}
+              >
                 Create Account
               </button>
             </form>

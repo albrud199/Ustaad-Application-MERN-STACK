@@ -1,8 +1,9 @@
-import DashboardNavbar from "@/components/DashboardNavbar";
+import Navbar from "@/components/Navbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import Image from "next/image";
+import AuthBookingButton from "@/components/AuthBookingButton";
 
 export const metadata = { title: "Search Parking | Ustaad" };
 
@@ -10,7 +11,7 @@ export default function SearchParkingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-surface overflow-x-hidden">
       <NebulaBackground />
-      <DashboardNavbar />
+      <Navbar />
       
       <main className="pt-[80px] flex-1 flex flex-col md:flex-row h-[calc(100vh-80px)] overflow-hidden relative z-10">
         {/* Sidebar Filters */}
@@ -171,7 +172,12 @@ export default function SearchParkingPage() {
                   </div>
                   <div className="mt-4 flex gap-2">
                       <Link href="/parking-details" className="flex-1 py-2 bg-surface-container-highest flex justify-center text-on-surface rounded-lg text-xs font-bold hover:bg-surface-bright transition-colors">Details</Link>
-                      <button className="flex-1 py-2 bg-primary-dim text-white rounded-lg text-xs font-bold hover:bg-primary transition-colors">Book Spot</button>
+                      <AuthBookingButton
+                        label="Book Spot"
+                        icon=""
+                        bookingPath="/checkout"
+                        className="flex-1 py-2 bg-primary-dim text-white rounded-lg text-xs font-bold hover:bg-primary transition-colors"
+                      />
                   </div>
                   {listing.badge && (
                     <div className="absolute top-2 right-2 px-2 py-0.5 bg-secondary text-on-secondary rounded-full text-[8px] font-black uppercase tracking-widest">{listing.badge}</div>
