@@ -26,3 +26,4 @@ export default function MyBookingsPage() {
     </div>
   );
 }
+// End of MyBookingsPage component

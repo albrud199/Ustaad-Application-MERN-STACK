@@ -184,4 +184,4 @@ export default function MyBookingsContent() {
       </div>
     </>
   );
-}
+} // End of MyBookingsContent component 
