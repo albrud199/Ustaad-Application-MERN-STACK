@@ -1,11 +1,188 @@
+'use client';
+
 import DashboardNavbar from "@/components/DashboardNavbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Image from "next/image";
-
-export const metadata = { title: "Identity Verification | Ustaad" };
+import { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function NIDVerificationPage() {
+  const router = useRouter();
+  const [nidFront, setNidFront] = useState<File | null>(null);
+  const [nidBack, setNidBack] = useState<File | null>(null);
+  const [selfie, setSelfie] = useState<File | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
+  const nidFrontRef = useRef<HTMLInputElement>(null);
+  const nidBackRef = useRef<HTMLInputElement>(null);
+  const selfieRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    // Load user data from localStorage (from registration form)
+    const savedUserData = localStorage.getItem('registrationData');
+    if (savedUserData) {
+      try {
+        setUserData(JSON.parse(savedUserData));
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+      }
+    }
+  }, []);
+
+  // Attach stream to video element once the camera modal is rendered in the DOM
+  useEffect(() => {
+    if (isCameraActive && activeStream && videoRef.current) {
+      videoRef.current.srcObject = activeStream;
+    }
+  }, [isCameraActive, activeStream]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, setFile: React.Dispatch<React.SetStateAction<File | null>>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size exceeds 5MB. Please choose a smaller file.');
+        return;
+      }
+      setFile(file);
+    }
+  };
+
+  const handleTakeLivePhoto = async () => {
+    try {
+      // Request camera permission and access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+
+      // Store stream in both ref and state, then open modal
+      // The useEffect will wire up the stream to the video element after the modal renders
+      streamRef.current = stream;
+      setActiveStream(stream);
+      setIsCameraActive(true);
+    } catch (error: any) {
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Camera permission denied. Please allow access to your camera in your browser settings and try again.');
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        alert('No camera found on your device. Please use the file upload option instead.');
+      } else if (error.name === 'NotReadableError') {
+        alert('Camera is already in use by another application. Please close it and try again.');
+      } else {
+        alert(`Unable to access camera: ${error.message || 'Unknown error'}. Please try again.`);
+      }
+    }
+  };
+
+  const handleCaptureSelfie = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        
+        canvasRef.current.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+            setSelfie(file);
+            closeCameraModal();
+          }
+        }, 'image/jpeg', 0.95);
+      }
+    }
+  };
+
+  const closeCameraModal = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setActiveStream(null);
+    setIsCameraActive(false);
+  };
+
+  const handleCompleteSubmission = async () => {
+    // Validate all required fields
+    if (!nidFront) {
+      alert('Please upload the front side of your NID.');
+      return;
+    }
+    if (!nidBack) {
+      alert('Please upload the back side of your NID.');
+      return;
+    }
+    if (!selfie) {
+      alert('Please take a selfie with your NID.');
+      return;
+    }
+    if (!userData) {
+      alert('Personal information not found. Please go back and complete registration.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Create FormData to send files and user data
+      const formData = new FormData();
+      formData.append('nidFront', nidFront);
+      formData.append('nidBack', nidBack);
+      formData.append('selfie', selfie);
+      formData.append('userData', JSON.stringify(userData));
+
+      // TODO: Replace with actual API endpoint
+      // For now, save to localStorage for demonstration
+      const submissionData = {
+        userData,
+        documents: {
+          nidFront: nidFront.name,
+          nidBack: nidBack.name,
+          selfie: selfie.name,
+        },
+        submittedAt: new Date().toISOString(),
+      };
+
+      // Save to localStorage
+      localStorage.setItem('nidVerificationData', JSON.stringify(submissionData));
+
+      // Persist user credentials to a persistent accounts store so login works
+      const existingAccounts = JSON.parse(localStorage.getItem('ustaad_accounts') || '[]');
+      const alreadyExists = existingAccounts.some((acc: any) => acc.email === userData.email);
+      if (!alreadyExists) {
+        existingAccounts.push({
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phone: userData.phone,
+          password: userData.password,
+          userType: userData.userType,
+          registeredAt: new Date().toISOString(),
+        });
+        localStorage.setItem('ustaad_accounts', JSON.stringify(existingAccounts));
+      }
+
+      // Clear the temporary registration data
+      localStorage.removeItem('registrationData');
+
+      // Show success message
+      alert('✓ Your account has been created successfully!\n\nYour identity documents will be verified within 24 hours. Please log in to continue.');
+
+      // Redirect to login page
+      router.push('/login');
+    } catch (error) {
+      console.error('Submission error:', error);
+      alert('Failed to submit verification. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-surface text-on-surface overflow-x-hidden selection:bg-primary/30">
       <NebulaBackground />
@@ -63,11 +240,19 @@ export default function NIDVerificationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-[family-name:var(--font-body)]">
                 <div className="space-y-1">
                   <label className="text-on-surface-variant uppercase tracking-widest text-[10px] font-bold font-[family-name:var(--font-label)]">Full Legal Name</label>
-                  <p className="text-on-surface text-lg font-medium">Arsalan Khan</p>
+                  <p className="text-on-surface text-lg font-medium">{userData?.firstName} {userData?.lastName}</p>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-on-surface-variant uppercase tracking-widest text-[10px] font-bold font-[family-name:var(--font-label)]">NID Number</label>
-                  <p className="text-on-surface text-lg font-medium font-mono">8293 •••• •••• 9102</p>
+                  <label className="text-on-surface-variant uppercase tracking-widest text-[10px] font-bold font-[family-name:var(--font-label)]">Email</label>
+                  <p className="text-on-surface text-lg font-medium font-mono">{userData?.email || 'Not provided'}</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-on-surface-variant uppercase tracking-widest text-[10px] font-bold font-[family-name:var(--font-label)]">Phone</label>
+                  <p className="text-on-surface text-lg font-medium">{userData?.phone || 'Not provided'}</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-on-surface-variant uppercase tracking-widest text-[10px] font-bold font-[family-name:var(--font-label)]">User Type</label>
+                  <p className="text-on-surface text-lg font-medium capitalize">{userData?.userType || 'Not provided'}</p>
                 </div>
               </div>
             </div>
@@ -87,7 +272,19 @@ export default function NIDVerificationPage() {
                   </div>
                   <h3 className="font-bold text-on-surface font-[family-name:var(--font-headline)]">NID Front Side</h3>
                   <p className="text-xs text-on-surface-variant mt-2 mb-4 font-[family-name:var(--font-body)]">PNG, JPG up to 5MB</p>
-                  <button className="text-xs font-bold text-primary px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20">Select File</button>
+                  {nidFront && <p className="text-xs text-success mb-2 font-bold">✓ {nidFront.name}</p>}
+                  <button 
+                    onClick={() => nidFrontRef.current?.click()}
+                    className="text-xs font-bold text-primary px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20">
+                    Select File
+                  </button>
+                  <input
+                    ref={nidFrontRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileSelect(e, setNidFront)}
+                    className="hidden"
+                  />
                 </div>
                 
                 {/* NID Back */}
@@ -97,7 +294,19 @@ export default function NIDVerificationPage() {
                   </div>
                   <h3 className="font-bold text-on-surface font-[family-name:var(--font-headline)]">NID Back Side</h3>
                   <p className="text-xs text-on-surface-variant mt-2 mb-4 font-[family-name:var(--font-body)]">Ensure all text is legible</p>
-                  <button className="text-xs font-bold text-primary px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20">Select File</button>
+                  {nidBack && <p className="text-xs text-success mb-2 font-bold">✓ {nidBack.name}</p>}
+                  <button 
+                    onClick={() => nidBackRef.current?.click()}
+                    className="text-xs font-bold text-primary px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20">
+                    Select File
+                  </button>
+                  <input
+                    ref={nidBackRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileSelect(e, setNidBack)}
+                    className="hidden"
+                  />
                 </div>
               </div>
 
@@ -115,8 +324,11 @@ export default function NIDVerificationPage() {
                     <span className="flex items-center gap-1 text-[11px] text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-md border border-outline-variant/20"><span className="material-symbols-outlined text-sm text-success">done</span> Good Lighting</span>
                     <span className="flex items-center gap-1 text-[11px] text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-md border border-outline-variant/20"><span className="material-symbols-outlined text-sm text-success">done</span> Clear Focus</span>
                   </div>
+                  {selfie && <p className="text-xs text-success mt-2 font-bold">✓ {selfie.name}</p>}
                 </div>
-                <button className="bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed font-bold py-3 px-6 rounded-xl hover:shadow-[0_0_20px_rgba(246,115,183,0.3)] transition-all whitespace-nowrap text-sm">
+                <button 
+                  onClick={handleTakeLivePhoto}
+                  className="bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed font-bold py-3 px-6 rounded-xl hover:shadow-[0_0_20px_rgba(246,115,183,0.3)] transition-all whitespace-nowrap text-sm">
                   Take Photo
                 </button>
               </div>
@@ -131,9 +343,21 @@ export default function NIDVerificationPage() {
             </div>
 
             {/* Submit Button */}
-            <button className="w-full bg-gradient-to-r from-primary to-primary-dim py-5 rounded-2xl text-on-primary-fixed font-[family-name:var(--font-headline)] font-extrabold text-xl shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4 group">
-              Complete Submission
-              <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            <button 
+              onClick={handleCompleteSubmission}
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-primary to-primary-dim py-5 rounded-2xl text-on-primary-fixed font-[family-name:var(--font-headline)] font-extrabold text-xl shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+              {isSubmitting ? (
+                <>
+                  <span className="animated-spinner inline-block w-5 h-5 border-2 border-transparent border-t-current border-r-current rounded-full animate-spin"></span>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  Complete Submission
+                  <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -207,6 +431,53 @@ export default function NIDVerificationPage() {
         </div>
 
       </main>
+
+      {/* Camera Modal */}
+      {isCameraActive && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-[family-name:var(--font-headline)] font-bold">Take Live Selfie</h2>
+              <button
+                onClick={closeCameraModal}
+                className="p-2 hover:bg-surface-container-high rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+
+            <div className="relative bg-black rounded-2xl overflow-hidden aspects-square">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+
+            <p className="text-sm text-on-surface-variant text-center font-[family-name:var(--font-body)]">
+              Position your face and NID card in the frame. Ensure good lighting and clear visibility.
+            </p>
+
+            <div className="flex gap-4">
+              <button
+                onClick={closeCameraModal}
+                className="flex-1 py-3 rounded-xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-high transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCaptureSelfie}
+                className="flex-1 bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed font-bold py-3 px-6 rounded-xl hover:shadow-[0_0_20px_rgba(246,115,183,0.3)] transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined">camera</span>
+                Capture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

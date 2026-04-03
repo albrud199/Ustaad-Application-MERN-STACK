@@ -1,11 +1,27 @@
+"use client";
+
 import DashboardNavbar from "@/components/DashboardNavbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-
-export const metadata = { title: "Car Owner Dashboard | Ustaad" };
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [userName, setUserName] = useState<string>("Navigator");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("loggedInUser");
+    if (!stored) {
+      // Not logged in — redirect to login
+      router.replace("/login");
+      return;
+    }
+    const user = JSON.parse(stored);
+    setUserName(user.firstName || "Navigator");
+  }, [router]);
+
   return (
     <>
       <NebulaBackground />
@@ -14,7 +30,7 @@ export default function DashboardPage() {
         {/* Hero Title */}
         <section className="mb-16">
           <h1 className="font-[family-name:var(--font-headline)] font-extrabold text-5xl md:text-6xl tracking-tighter mb-4 text-on-surface">
-            Welcome back, <span className="text-primary">Stellar Navigator</span>.
+            Welcome back, <span className="text-primary">{userName}</span>.
           </h1>
           <p className="text-on-surface-variant text-lg max-w-2xl">
             Your fleet is running optimally. 3 upcoming tasks require your attention this week.
