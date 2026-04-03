@@ -1,11 +1,9 @@
-"use client";
+'use client';
 
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-type UserRole = "car-owner" | "garage-owner";
 
 export default function RegisterPage() {
   const router = useRouter();
