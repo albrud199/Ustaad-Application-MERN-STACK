@@ -1,10 +1,7 @@
+'use client';
+
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
-
-export const metadata = {
-  title: "Register | Ustaad",
-  description: "Create your Ustaad account and join the celestial navigation network.",
-};
 
 export default function RegisterPage() {
   return (
