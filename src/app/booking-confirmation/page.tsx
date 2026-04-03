@@ -1,11 +1,46 @@
+'use client';
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import Image from "next/image";
 
-export const metadata = { title: "Booking Confirmed | Ustaad" };
+
 
 export default function BookingConfirmationPage() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const loggedIn = localStorage.getItem("ustaad_logged_in") === "true";
+      if (!loggedIn) {
+        router.push("/login");
+        return;
+      }
+      setIsAuthenticated(true);
+      setIsChecking(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // Show loading state while checking authentication
+  if (isChecking || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <NebulaBackground />
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          <p className="text-on-surface-variant">Verifying access...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-surface selection:bg-primary/30 text-on-surface">
       <NebulaBackground />
@@ -140,9 +175,9 @@ export default function BookingConfirmationPage() {
                     <button className="w-full flex items-center justify-center gap-3 h-14 bg-surface-container-highest border border-outline-variant/30 rounded-xl font-bold text-on-surface hover:bg-surface-variant transition-all">
                         <span className="material-symbols-outlined">print</span> Print
                     </button>
-                    <Link href="/dashboard" className="w-full flex items-center justify-center gap-3 h-14 mt-8 text-on-surface-variant hover:text-primary transition-all group">
+                    <button onClick={() => router.push("/dashboard")} className="w-full flex items-center justify-center gap-3 h-14 mt-8 text-on-surface-variant hover:text-primary transition-all group">
                         <span className="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span> Back to Dashboard
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>

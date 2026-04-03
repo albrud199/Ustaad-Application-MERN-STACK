@@ -1,4 +1,5 @@
-import DashboardNavbar from "@/components/DashboardNavbar";
+import Navbar from "@/components/Navbar";
+import AuthGateButton from "@/components/AuthGateButton";
 import Footer from "@/components/Footer";
 import Image from "next/image";
 
@@ -12,7 +13,7 @@ export default function ServiceResultsPage() {
       <div className="fixed w-[600px] h-[600px] bg-primary/10 blur-[120px] rounded-full -top-48 -left-48 -z-10 pointer-events-none"></div>
       <div className="fixed w-[400px] h-[400px] bg-secondary/10 blur-[120px] rounded-full bottom-0 right-0 -z-10 pointer-events-none"></div>
 
-      <DashboardNavbar />
+      <Navbar />
 
       <main className="flex-1 pt-32 pb-24 px-6 max-w-7xl mx-auto w-full relative z-10">
         
@@ -132,9 +133,9 @@ export default function ServiceResultsPage() {
                 </div>
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-4 border-t border-outline-variant/10 border-dashed">
                   <span className="text-on-surface-variant text-sm italic">"Specialists in electric powertrains and luxury tuning."</span>
-                  <button className="w-full md:w-auto bg-primary-container text-on-primary-container px-6 py-2.5 rounded-lg font-bold hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-sm text-sm border border-primary/20 shrink-0">
+                  <AuthGateButton href="/request-service" returnTo="/service-results" className="w-full md:w-auto bg-primary-container text-on-primary-container px-6 py-2.5 rounded-lg font-bold hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-sm text-sm border border-primary/20 shrink-0">
                     Select
-                  </button>
+                  </AuthGateButton>
                 </div>
               </div>
             </div>
@@ -181,9 +182,9 @@ export default function ServiceResultsPage() {
                 </div>
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-4 border-t border-outline-variant/10 border-dashed">
                   <span className="text-on-surface-variant text-sm italic">"Quick turnaround for standard parts and fluids."</span>
-                  <button className="w-full md:w-auto bg-primary/10 text-primary px-6 py-2.5 rounded-lg font-bold hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95 shadow-sm text-sm border border-primary/20 shrink-0">
+                  <AuthGateButton href="/request-service" returnTo="/service-results" className="w-full md:w-auto bg-primary/10 text-primary px-6 py-2.5 rounded-lg font-bold hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95 shadow-sm text-sm border border-primary/20 shrink-0">
                     Select
-                  </button>
+                  </AuthGateButton>
                 </div>
               </div>
             </div>
@@ -230,9 +231,9 @@ export default function ServiceResultsPage() {
                 </div>
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-4 border-t border-outline-variant/10 border-dashed">
                   <span className="text-on-surface-variant text-sm italic">"Unbeatable prices for high-quality standard repairs."</span>
-                  <button className="w-full md:w-auto bg-primary/10 text-primary px-6 py-2.5 rounded-lg font-bold hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95 shadow-sm text-sm border border-primary/20 shrink-0">
+                  <AuthGateButton href="/request-service" returnTo="/service-results" className="w-full md:w-auto bg-primary/10 text-primary px-6 py-2.5 rounded-lg font-bold hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95 shadow-sm text-sm border border-primary/20 shrink-0">
                     Select
-                  </button>
+                  </AuthGateButton>
                 </div>
               </div>
             </div>

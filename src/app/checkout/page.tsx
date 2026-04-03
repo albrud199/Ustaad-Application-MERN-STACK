@@ -1,10 +1,47 @@
+'use client';
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
 import Image from "next/image";
 
-export const metadata = { title: "Secure Checkout | Ustaad" };
+
 
 export default function CheckoutPage() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    // Check authentication status
+    const checkAuth = () => {
+      const loggedIn = localStorage.getItem("ustaad_logged_in") === "true";
+      if (!loggedIn) {
+        // Redirect to login if not authenticated
+        router.push("/login?returnTo=/checkout");
+        return;
+      }
+      setIsAuthenticated(true);
+      setIsChecking(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // Show loading state while checking authentication
+  if (isChecking || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <NebulaBackground />
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          <p className="text-on-surface-variant">Verifying access...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-on-background selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
       <NebulaBackground />
@@ -13,9 +50,9 @@ export default function CheckoutPage() {
       <nav className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-primary/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
         <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
             <div className="flex items-center gap-4">
-                <Link href="/dashboard" className="text-on-surface-variant hover:text-primary active:scale-95 transition-all">
+                <button onClick={() => router.back()} className="text-on-surface-variant hover:text-primary active:scale-95 transition-all">
                     <span className="material-symbols-outlined">arrow_back</span>
-                </Link>
+                </button>
                 <h1 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary mr-2 to-secondary font-[family-name:var(--font-headline)]">Ustaad</h1>
             </div>
             <div className="flex items-center gap-6">

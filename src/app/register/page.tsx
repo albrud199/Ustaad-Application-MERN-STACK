@@ -2,13 +2,25 @@
 
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+type UserRole = "car-owner" | "garage-owner";
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-primary">Loading...</div>}>
+      <RegisterContent />
+    </Suspense>
+  );
+}
+
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedRole, setSelectedRole] = useState<UserRole>("car-owner");
   const [showPassword, setShowPassword] = useState(false);
+  const returnTo = searchParams.get("returnTo");
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,7 +36,8 @@ export default function RegisterPage() {
 
     // Save to localStorage for the NID verification step
     localStorage.setItem("registrationData", JSON.stringify(userData));
-    router.push("/nid-verification");
+    const nidVerificationUrl = `/nid-verification${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`;
+    router.push(nidVerificationUrl);
   };
 
   return (

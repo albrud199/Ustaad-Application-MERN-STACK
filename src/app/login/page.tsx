@@ -18,7 +18,7 @@ export default function LoginPage() {
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get("returnUrl");
+  const returnTo = searchParams.get("returnTo");
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"info" | "error" | "success">("info");
@@ -58,7 +58,8 @@ function LoginContent() {
 
     const accounts = JSON.parse(localStorage.getItem("ustaad_accounts") || "[]");
     if (accounts.length === 0) {
-      showNotification("No account found. Please register first.", "error");
+      const registerUrl = `/register${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`;
+      router.push(registerUrl);
       return;
     }
 
@@ -85,12 +86,14 @@ function LoginContent() {
       email: matchedUser.email,
       userType: matchedUser.userType,
     }));
+    localStorage.setItem("ustaad_logged_in", "true");
+    document.cookie = "ustaad_logged_in=true; path=/; max-age=604800; samesite=lax";
 
     setFailedAttempts(0);
     if (matchedUser.userType === "garage-owner") {
       router.push("/garage-dashboard");
     } else {
-      router.push(returnUrl || "/dashboard");
+      router.push(returnTo || "/dashboard");
     }
   };
 

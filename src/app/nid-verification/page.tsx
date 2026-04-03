@@ -4,11 +4,21 @@ import DashboardNavbar from "@/components/DashboardNavbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Image from "next/image";
-import { useRef, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useRef, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function NIDVerificationPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-primary">Loading...</div>}>
+      <NIDVerificationContent />
+    </Suspense>
+  );
+}
+
+function NIDVerificationContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const [nidFront, setNidFront] = useState<File | null>(null);
   const [nidBack, setNidBack] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
@@ -174,7 +184,8 @@ export default function NIDVerificationPage() {
       alert('✓ Your account has been created successfully!\n\nYour identity documents will be verified within 24 hours. Please log in to continue.');
 
       // Redirect to login page
-      router.push('/login');
+      const loginUrl = `/login${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`;
+      router.push(loginUrl);
     } catch (error) {
       console.error('Submission error:', error);
       alert('Failed to submit verification. Please try again.');

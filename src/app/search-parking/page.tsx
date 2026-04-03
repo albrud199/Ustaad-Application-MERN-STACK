@@ -3,7 +3,7 @@ import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import Image from "next/image";
-import AuthBookingButton from "@/components/AuthBookingButton";
+import AuthGateButton from "@/components/AuthGateButton";
 
 export const metadata = { title: "Search Parking | Ustaad" };
 
@@ -172,12 +172,13 @@ export default function SearchParkingPage() {
                   </div>
                   <div className="mt-4 flex gap-2">
                       <Link href="/parking-details" className="flex-1 py-2 bg-surface-container-highest flex justify-center text-on-surface rounded-lg text-xs font-bold hover:bg-surface-bright transition-colors">Details</Link>
-                      <AuthBookingButton
-                        label="Book Spot"
-                        icon=""
-                        bookingPath="/checkout"
+                      <AuthGateButton
+                        href="/checkout"
+                        returnTo="/search-parking"
                         className="flex-1 py-2 bg-primary-dim text-white rounded-lg text-xs font-bold hover:bg-primary transition-colors"
-                      />
+                      >
+                        Book Spot
+                      </AuthGateButton>
                   </div>
                   {listing.badge && (
                     <div className="absolute top-2 right-2 px-2 py-0.5 bg-secondary text-on-secondary rounded-full text-[8px] font-black uppercase tracking-widest">{listing.badge}</div>
