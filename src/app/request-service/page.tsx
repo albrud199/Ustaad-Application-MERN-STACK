@@ -1,7 +1,8 @@
-import DashboardNavbar from "@/components/DashboardNavbar";
+import Navbar from "@/components/Navbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Image from "next/image";
+import AuthBookingButton from "@/components/AuthBookingButton";
 
 export const metadata = { title: "Request Service | Ustaad" };
 
@@ -9,7 +10,7 @@ export default function RequestServicePage() {
   return (
     <div className="min-h-screen flex flex-col bg-surface overflow-x-hidden">
       <NebulaBackground />
-      <DashboardNavbar />
+      <Navbar />
       
       <main className="flex-1 pt-32 pb-24 px-6 max-w-5xl mx-auto w-full relative z-10">
         
@@ -157,10 +158,12 @@ export default function RequestServicePage() {
                     <button className="px-8 py-4 text-on-surface-variant font-bold hover:text-on-surface transition-colors flex items-center gap-2">
                         <span className="material-symbols-outlined">arrow_back</span> Save Draft
                     </button>
-                    <button className="w-full md:w-auto px-12 py-5 rounded-2xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3">
-                        Initialize Service Order
-                        <span className="material-symbols-outlined">rocket_launch</span>
-                    </button>
+                    <AuthBookingButton
+                        label="Initialize Service Order"
+                        icon="rocket_launch"
+                        bookingPath="/service-results"
+                        className="w-full md:w-auto px-12 py-5 rounded-2xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+                    />
                 </div>
 
             </div>
