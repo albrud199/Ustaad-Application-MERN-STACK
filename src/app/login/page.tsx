@@ -2,13 +2,23 @@
 
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type ResetStep = "email" | "newPassword" | "success";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-primary">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"info" | "error" | "success">("info");
@@ -80,7 +90,7 @@ export default function LoginPage() {
     if (matchedUser.userType === "garage-owner") {
       router.push("/garage-dashboard");
     } else {
-      router.push("/dashboard");
+      router.push(returnUrl || "/dashboard");
     }
   };
 
