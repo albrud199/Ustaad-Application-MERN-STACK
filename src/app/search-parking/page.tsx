@@ -5,6 +5,7 @@ import NebulaBackground from "@/components/NebulaBackground";
 import AuthGateButton from "@/components/AuthGateButton";
 import Link from "next/link";
 import Image from "next/image";
+import AuthBookingButton from "@/components/AuthBookingButton";
 
 export default function SearchParkingPage() {
   return (

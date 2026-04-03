@@ -89,7 +89,7 @@ function LoginContent() {
     } else if (matchedUser.userType === "garage-owner") {
       router.push("/garage-dashboard");
     } else {
-      router.push("/dashboard");
+      router.push(returnUrl || "/dashboard");
     }
   };
 
