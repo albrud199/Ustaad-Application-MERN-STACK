@@ -7,18 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 type ResetStep = "email" | "newPassword" | "success";
 
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-primary">Loading...</div>}>
-      <LoginContent />
-    </Suspense>
-  );
-}
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get("returnUrl");
+  const returnTo = searchParams.get("returnTo");
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"info" | "error" | "success">("info");
@@ -86,8 +78,15 @@ function LoginContent() {
       userType: matchedUser.userType,
     }));
 
+    // Set auth flag for auth-gated components
+    localStorage.setItem("ustaad_logged_in", "true");
+
     setFailedAttempts(0);
-    if (matchedUser.userType === "garage-owner") {
+
+    // Redirect to returnTo destination if present, otherwise default dashboard
+    if (returnTo) {
+      router.push(returnTo);
+    } else if (matchedUser.userType === "garage-owner") {
       router.push("/garage-dashboard");
     } else {
       router.push(returnUrl || "/dashboard");
@@ -422,5 +421,17 @@ function LoginContent() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <span className="material-symbols-outlined text-primary text-5xl animate-pulse">lock</span>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
