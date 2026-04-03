@@ -2,13 +2,15 @@
 
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type ResetStep = "email" | "newPassword" | "success";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"info" | "error" | "success">("info");
@@ -76,8 +78,15 @@ export default function LoginPage() {
       userType: matchedUser.userType,
     }));
 
+    // Set auth flag for auth-gated components
+    localStorage.setItem("ustaad_logged_in", "true");
+
     setFailedAttempts(0);
-    if (matchedUser.userType === "garage-owner") {
+
+    // Redirect to returnTo destination if present, otherwise default dashboard
+    if (returnTo) {
+      router.push(returnTo);
+    } else if (matchedUser.userType === "garage-owner") {
       router.push("/garage-dashboard");
     } else {
       router.push("/dashboard");
@@ -412,5 +421,17 @@ export default function LoginPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <span className="material-symbols-outlined text-primary text-5xl animate-pulse">lock</span>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

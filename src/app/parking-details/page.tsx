@@ -1,16 +1,17 @@
-import DashboardNavbar from "@/components/DashboardNavbar";
+"use client";
+
+import Navbar from "@/components/Navbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
+import AuthGateButton from "@/components/AuthGateButton";
 import Link from "next/link";
 import Image from "next/image";
-
-export const metadata = { title: "Parking Details | Ustaad" };
 
 export default function ParkingDetailsPage() {
   return (
     <>
       <NebulaBackground />
-      <DashboardNavbar />
+      <Navbar />
       
       <main className="pt-32 pb-24 max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         {/* Breadcrumb & Title */}
@@ -168,7 +169,7 @@ export default function ParkingDetailsPage() {
                         </div>
                     </div>
 
-                    <form className="space-y-6" action="/booking-confirmation">
+                    <div className="space-y-6">
                         <div className="space-y-2">
                             <label className="text-sm font-[family-name:var(--font-label)] text-on-surface-variant ml-1">Select Date</label>
                             <div className="relative">
@@ -202,13 +203,17 @@ export default function ParkingDetailsPage() {
                             </div>
                         </div>
 
-                        <Link href="/checkout" className="w-full block text-center bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(163,166,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
-                            Reserve Now
-                        </Link>
-                    </form>
+                        <AuthGateButton
+                          href="/checkout"
+                          returnTo="/parking-details"
+                          className="w-full block text-center bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(163,166,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        >
+                          Reserve Now
+                        </AuthGateButton>
+                    </div>
 
                     <div className="mt-8 text-center">
-                        <p className="text-sm text-on-surface-variant">You won't be charged yet</p>
+                        <p className="text-sm text-on-surface-variant">You won&apos;t be charged yet</p>
                         <div className="flex items-center justify-center gap-4 mt-6 grayscale opacity-40">
                             <span className="material-symbols-outlined text-on-surface">credit_card</span>
                             <span className="material-symbols-outlined text-on-surface">account_balance_wallet</span>
