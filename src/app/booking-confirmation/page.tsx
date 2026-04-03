@@ -1,7 +1,6 @@
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import Image from "next/image";
 
 export const metadata = { title: "Booking Confirmed | Ustaad" };
 
