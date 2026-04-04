@@ -4,7 +4,29 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    role: { type: String, default: "user" },
+    password: { type: String, required: true },
+    role: { 
+      type: String, 
+      enum: ["car_owner", "garage_owner"], 
+      required: true 
+    },
+    // Car Owner specific fields
+    vehicles: [
+      {
+        vehicleId: mongoose.Schema.Types.ObjectId,
+        licensePlate: String,
+        model: String,
+      }
+    ],
+    // Garage Owner specific fields
+    garage: {
+      name: String,
+      location: String,
+      capacity: Number,
+      operatingHours: { open: String, close: String },
+    },
+    profilePicture: String,
+    phone: String,
   },
   { timestamps: true }
 );
