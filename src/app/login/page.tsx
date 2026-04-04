@@ -72,10 +72,10 @@ function LoginContent() {
     }
 
     localStorage.setItem("loggedInUser", JSON.stringify({
-      firstName: matchedUser.firstName,
-      lastName: matchedUser.lastName,
+      id: matchedUser.id,
+      name: matchedUser.name,
       email: matchedUser.email,
-      userType: matchedUser.userType,
+      role: matchedUser.role,
     }));
 
     // Set auth flag for auth-gated components
@@ -83,13 +83,13 @@ function LoginContent() {
 
     setFailedAttempts(0);
 
-    // Redirect to returnTo destination if present, otherwise default dashboard
+    // Redirect based on role
     if (returnTo) {
       router.push(returnTo);
-    } else if (matchedUser.userType === "garage-owner") {
-      router.push("/garage-dashboard");
+    } else if (matchedUser.role === "garage_owner") {
+      router.push("/dashboard/garage-owner");
     } else {
-      router.push(returnUrl || "/dashboard");
+      router.push("/dashboard/car-owner");
     }
   };
 
@@ -190,7 +190,7 @@ function LoginContent() {
                 </div>
                 <button
                   onClick={handleVerifyEmail}
-                  className="w-full py-3.5 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98]"
+                  className="w-full py-3.5 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-lg"
                 >
                   Continue
                 </button>
@@ -205,7 +205,7 @@ function LoginContent() {
                     <span className="material-symbols-outlined text-secondary text-2xl">key</span>
                   </div>
                   <h2 className="text-2xl font-[family-name:var(--font-headline)] font-bold text-on-surface mb-1">New Password</h2>
-                  <p className="text-on-surface-variant text-sm font-[family-name:var(--font-body)]">Set a strong new password for <span className="text-primary font-semibold">{resetEmail}</span>.</p>
+                  <p className="text-on-surface-variant text-sm font-[family-name:var(--font-body)]">Set a strong new password for <span className="text-primary font-semibold">{resetEmail}</span></p>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -241,7 +241,7 @@ function LoginContent() {
                 </div>
                 <button
                   onClick={handleResetPassword}
-                  className="w-full py-3.5 bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-[0_8px_24px_rgba(246,115,183,0.3)] active:scale-[0.98]"
+                  className="w-full py-3.5 bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-lg"
                 >
                   Reset Password
                 </button>
@@ -262,7 +262,7 @@ function LoginContent() {
                 </div>
                 <button
                   onClick={() => setShowResetModal(false)}
-                  className="w-full py-3.5 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98]"
+                  className="w-full py-3.5 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-lg"
                 >
                   Back to Login
                 </button>
@@ -385,7 +385,7 @@ function LoginContent() {
               </div>
               <button
                 type="submit"
-                className="block w-full text-center bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold py-4 rounded-xl shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98] transition-all font-[family-name:var(--font-headline)] tracking-tight hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)]"
+                className="block w-full text-center bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold py-4 rounded-xl shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-95 transition-all hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)]"
               >
                 Login to Console
               </button>
@@ -401,7 +401,7 @@ function LoginContent() {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="flex items-center justify-center space-x-3 bg-surface-container-high border border-outline-variant/20 py-3.5 rounded-xl hover:bg-surface-variant transition-all group relative"
+                className="flex items-center justify-center space-x-3 bg-surface-container-high border border-outline-variant/20 py-3.5 rounded-xl hover:bg-surface-variant transition-all group"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path className="text-[#4285F4]" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="currentColor" />
