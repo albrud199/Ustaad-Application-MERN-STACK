@@ -167,14 +167,23 @@ export default function NIDVerificationPage() {
         localStorage.setItem('ustaad_accounts', JSON.stringify(existingAccounts));
       }
 
+      // Set the logged-in session for the new user
+      localStorage.setItem('loggedInUser', JSON.stringify({
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        userType: userData.userType,
+      }));
+      localStorage.setItem('ustaad_logged_in', 'true');
+
       // Clear the temporary registration data
       localStorage.removeItem('registrationData');
 
       // Show success message
-      alert('✓ Your account has been created successfully!\n\nYour identity documents will be verified within 24 hours. Please log in to continue.');
+      alert('✓ Your account has been created successfully!\n\nYour identity documents will be verified within 24 hours.');
 
-      // Redirect to login page
-      router.push('/login');
+      // Redirect to the dashboard (which will redirect to the correct role-specific dashboard)
+      router.push('/dashboard');
     } catch (error) {
       console.error('Submission error:', error);
       alert('Failed to submit verification. Please try again.');
