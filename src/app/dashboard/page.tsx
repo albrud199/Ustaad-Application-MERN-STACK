@@ -15,7 +15,7 @@ export default function DashboardPage() {
       return;
     }
 
-    if (user.userType === "garage-owner") {
+    if (user.role === "garage_owner") {
       router.replace("/dashboard/garage-owner");
     } else {
       router.replace("/dashboard/car-owner");

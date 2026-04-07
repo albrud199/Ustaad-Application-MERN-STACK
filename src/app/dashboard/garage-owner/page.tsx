@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface GarageStats {
   totalBookings: number;
@@ -11,19 +11,12 @@ interface GarageStats {
 }
 
 export default function GarageOwnerDashboard() {
-  const [stats, setStats] = useState<GarageStats>({
+  const [stats] = useState<GarageStats>({
     totalBookings: 0,
     occupancy: 0,
     revenue: 0,
     availableSpots: 0,
   });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // TODO: Fetch garage stats from API
-    // fetch("/api/dashboard/garage-owner")
-    setLoading(false);
-  }, []);
 
   return (
     <DashboardLayout requiredRole="garage_owner">

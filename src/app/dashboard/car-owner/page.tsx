@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface DashboardStats {
   activeBookings: number;
@@ -11,19 +11,12 @@ interface DashboardStats {
 }
 
 export default function CarOwnerDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
+  const [stats] = useState<DashboardStats>({
     activeBookings: 0,
     vehicles: 0,
     totalSpent: 0,
     upcomingBookings: 0,
   });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // TODO: Fetch dashboard stats from API
-    // Example: fetch("/api/dashboard/car-owner")
-    setLoading(false);
-  }, []);
 
   return (
     <DashboardLayout requiredRole="car_owner">

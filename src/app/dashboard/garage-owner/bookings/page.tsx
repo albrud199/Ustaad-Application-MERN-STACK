@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface Booking {
   id: string;
@@ -13,14 +13,7 @@ interface Booking {
 }
 
 export default function GarageBookings() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // TODO: Fetch bookings from API
-    // fetch("/api/dashboard/garage-owner/bookings")
-    setLoading(false);
-  }, []);
+  const [bookings] = useState<Booking[]>([]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
