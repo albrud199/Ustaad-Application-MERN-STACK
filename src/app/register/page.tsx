@@ -1,6 +1,7 @@
 'use client';
 
 import NebulaBackground from "@/components/NebulaBackground";
+import { persistLoggedInUser, saveStoredAccounts, getStoredAccounts, type StoredAccount } from "@/lib/auth";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,29 +16,29 @@ export default function RegisterPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const userData = {
+    const userData: StoredAccount = {
       id: Date.now().toString(),
       name: `${formData.get("firstName")} ${formData.get("lastName")}`,
-      firstName: formData.get("firstName"),
-      lastName: formData.get("lastName"),
-      email: formData.get("email"),
-      phone: formData.get("phone"),
-      password: formData.get("password"),
+      firstName: String(formData.get("firstName") || ""),
+      lastName: String(formData.get("lastName") || ""),
+      email: String(formData.get("email") || "").toLowerCase(),
+      phone: String(formData.get("phone") || ""),
+      password: String(formData.get("password") || ""),
       role: selectedRole,
     };
 
     // Save to localStorage
-    const existingAccounts = JSON.parse(localStorage.getItem("ustaad_accounts") || "[]");
+    const existingAccounts = getStoredAccounts();
     existingAccounts.push(userData);
-    localStorage.setItem("ustaad_accounts", JSON.stringify(existingAccounts));
+    saveStoredAccounts(existingAccounts);
 
     // Auto login
-    localStorage.setItem("loggedInUser", JSON.stringify({
+    persistLoggedInUser({
       id: userData.id,
       name: userData.name,
       email: userData.email,
       role: userData.role,
-    }));
+    });
 
     // Redirect based on role
     if (selectedRole === "garage_owner") {

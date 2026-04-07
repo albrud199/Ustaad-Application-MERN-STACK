@@ -1,6 +1,13 @@
 "use client";
 
 import NebulaBackground from "@/components/NebulaBackground";
+import {
+  getStoredAccounts,
+  persistLoggedInUser,
+  saveStoredAccounts,
+  type LoggedInUser,
+  type StoredAccount,
+} from "@/lib/auth";
 import Link from "next/link";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -37,7 +44,19 @@ function LoginContent() {
     showNotification("Google Sign-In is coming soon! Please use email & password for now.");
   };
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const redirectAfterLogin = (user: LoggedInUser) => {
+    if (returnTo) {
+      router.push(returnTo);
+    } else if (user.role === "admin") {
+      router.push("/admin");
+    } else if (user.role === "garage_owner") {
+      router.push("/dashboard/garage-owner");
+    } else {
+      router.push("/dashboard/car-owner");
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
@@ -48,48 +67,67 @@ function LoginContent() {
       return;
     }
 
-    const accounts = JSON.parse(localStorage.getItem("ustaad_accounts") || "[]");
-    if (accounts.length === 0) {
-      showNotification("No account found. Please register first.", "error");
-      return;
-    }
-
+    const accounts = getStoredAccounts();
     const matchedUser = accounts.find(
-      (acc: any) =>
-        acc.email?.toLowerCase() === email.toLowerCase() &&
-        acc.password === password
+      (acc: StoredAccount) =>
+        acc.email.toLowerCase() === email.toLowerCase() && acc.password === password
     );
 
-    if (!matchedUser) {
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      if (newAttempts >= 2) {
-        showNotification("Incorrect credentials again. Use 'Forgot Password?' below to reset.", "error");
-      } else {
-        showNotification(`Incorrect email or password. ${2 - newAttempts} attempt(s) remaining.`, "error");
-      }
+    if (matchedUser) {
+      persistLoggedInUser({
+        id: matchedUser.id,
+        name: matchedUser.name,
+        email: matchedUser.email,
+        role: matchedUser.role,
+      });
+      setFailedAttempts(0);
+      redirectAfterLogin({
+        id: matchedUser.id,
+        name: matchedUser.name,
+        email: matchedUser.email,
+        role: matchedUser.role,
+      });
       return;
     }
 
-    localStorage.setItem("loggedInUser", JSON.stringify({
-      id: matchedUser.id,
-      name: matchedUser.name,
-      email: matchedUser.email,
-      role: matchedUser.role,
-    }));
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Set auth flag for auth-gated components
-    localStorage.setItem("ustaad_logged_in", "true");
+      if (!res.ok) {
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
 
-    setFailedAttempts(0);
+        if (res.status === 403) {
+          const errorBody = (await res.json()) as { error?: string };
+          showNotification(errorBody.error || "This account cannot log in right now.", "error");
+          return;
+        }
 
-    // Redirect based on role
-    if (returnTo) {
-      router.push(returnTo);
-    } else if (matchedUser.role === "garage_owner") {
-      router.push("/dashboard/garage-owner");
-    } else {
-      router.push("/dashboard/car-owner");
+        if (newAttempts >= 2) {
+          showNotification("Incorrect credentials again. Use 'Forgot Password?' below to reset.", "error");
+        } else {
+          showNotification(`Incorrect email or password. ${2 - newAttempts} attempt(s) remaining.`, "error");
+        }
+        return;
+      }
+
+      const data = (await res.json()) as { user: LoggedInUser };
+      persistLoggedInUser(data.user);
+      setFailedAttempts(0);
+      redirectAfterLogin(data.user);
+    } catch {
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      showNotification(
+        newAttempts >= 2
+          ? "Login failed again. Check your credentials or try again shortly."
+          : "Unable to sign in right now. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -106,8 +144,8 @@ function LoginContent() {
   const handleVerifyEmail = () => {
     setResetError("");
     if (!resetEmail) { setResetError("Please enter your email address."); return; }
-    const accounts = JSON.parse(localStorage.getItem("ustaad_accounts") || "[]");
-    const found = accounts.find((acc: any) => acc.email?.toLowerCase() === resetEmail.toLowerCase());
+    const accounts = getStoredAccounts();
+    const found = accounts.find((acc) => acc.email.toLowerCase() === resetEmail.toLowerCase());
     if (!found) { setResetError("No account found with this email address."); return; }
     setResetStep("newPassword");
   };
@@ -119,13 +157,13 @@ function LoginContent() {
     if (newPassword !== confirmPassword) { setResetError("Passwords do not match."); return; }
 
     // Update password in ustaad_accounts
-    const accounts = JSON.parse(localStorage.getItem("ustaad_accounts") || "[]");
-    const updated = accounts.map((acc: any) =>
-      acc.email?.toLowerCase() === resetEmail.toLowerCase()
+    const accounts = getStoredAccounts();
+    const updated = accounts.map((acc: StoredAccount) =>
+      acc.email.toLowerCase() === resetEmail.toLowerCase()
         ? { ...acc, password: newPassword }
         : acc
     );
-    localStorage.setItem("ustaad_accounts", JSON.stringify(updated));
+    saveStoredAccounts(updated);
     setResetStep("success");
     setFailedAttempts(0);
   };

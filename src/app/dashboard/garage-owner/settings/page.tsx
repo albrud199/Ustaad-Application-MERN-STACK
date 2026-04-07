@@ -26,7 +26,7 @@ export default function GarageSettings() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const handleChange = (field: keyof GarageSettings, value: any) => {
+  const handleChange = (field: keyof GarageSettings, value: string | number) => {
     setSettings({ ...settings, [field]: value });
   };
 
@@ -44,7 +44,7 @@ export default function GarageSettings() {
       
       setMessage("Settings saved successfully!");
       setTimeout(() => setMessage(""), 3000);
-    } catch (error) {
+    } catch {
       setMessage("Failed to save settings");
     } finally {
       setLoading(false);
