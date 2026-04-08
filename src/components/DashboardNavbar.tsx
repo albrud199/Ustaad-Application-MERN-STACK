@@ -2,18 +2,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const ownerNavLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-  { href: "/search-parking", label: "Parking", icon: "local_parking" },
-  { href: "/my-bookings", label: "Bookings", icon: "event" },
-  { href: "/request-service", label: "Services", icon: "handyman" },
+const carOwnerNavLinks = [
+  { href: "/dashboard/car-owner", label: "Dashboard", icon: "dashboard" },
+  { href: "/dashboard/car-owner/my-bookings", label: "My Bookings", icon: "event" },
+  { href: "/dashboard/car-owner/my-vehicles", label: "My Vehicles", icon: "directions_car" },
+  { href: "/dashboard/car-owner/payment-history", label: "Payment History", icon: "payments" },
 ];
 
-export default function DashboardNavbar({ userType = "car-owner" }: { userType?: string }) {
+const garageOwnerNavLinks = [
+  { href: "/dashboard/garage-owner", label: "Dashboard", icon: "dashboard" },
+  { href: "/dashboard/garage-owner/bookings", label: "Bookings", icon: "event" },
+  { href: "/dashboard/garage-owner/manage-parking", label: "Manage Parking", icon: "local_parking" },
+  { href: "/dashboard/garage-owner/earnings", label: "Earnings", icon: "payments" },
+  { href: "/dashboard/garage-owner/settings", label: "Settings", icon: "settings" },
+];
+
+export default function DashboardNavbar({ userType = "car-owner" }: { userType?: "car-owner" | "garage-owner" }) {
   const pathname = usePathname();
+  const navLinks = userType === "garage-owner" ? garageOwnerNavLinks : carOwnerNavLinks;
 
   return (
     <header className="fixed top-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-xl">
+      <div className="fixed right-4 top-4 z-50 text-xs text-on-surface-variant">{userType}</div>
       <div className="flex justify-between items-center px-8 py-4 max-w-[1440px] mx-auto">
         <div className="flex items-center gap-12">
           <Link
@@ -23,7 +33,7 @@ export default function DashboardNavbar({ userType = "car-owner" }: { userType?:
             Ustaad
           </Link>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium tracking-tight font-[family-name:var(--font-headline)]">
-            {ownerNavLinks.map((link) => (
+            {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

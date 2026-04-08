@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";

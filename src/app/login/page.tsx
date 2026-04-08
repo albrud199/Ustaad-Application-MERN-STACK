@@ -1,6 +1,13 @@
 "use client";
 
 import NebulaBackground from "@/components/NebulaBackground";
+import {
+  getStoredAccounts,
+  persistLoggedInUser,
+  saveStoredAccounts,
+  type LoggedInUser,
+  type StoredAccount,
+} from "@/lib/auth";
 import Link from "next/link";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -37,7 +44,19 @@ function LoginContent() {
     showNotification("Google Sign-In is coming soon! Please use email & password for now.");
   };
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const redirectAfterLogin = (user: LoggedInUser) => {
+    if (returnTo) {
+      router.push(returnTo);
+    } else if (user.role === "admin") {
+      router.push("/admin");
+    } else if (user.role === "garage_owner") {
+      router.push("/dashboard/garage-owner");
+    } else {
+      router.push("/dashboard/car-owner");
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
@@ -48,48 +67,67 @@ function LoginContent() {
       return;
     }
 
-    const accounts = JSON.parse(localStorage.getItem("ustaad_accounts") || "[]");
-    if (accounts.length === 0) {
-      showNotification("No account found. Please register first.", "error");
-      return;
-    }
-
+    const accounts = getStoredAccounts();
     const matchedUser = accounts.find(
-      (acc: any) =>
-        acc.email?.toLowerCase() === email.toLowerCase() &&
-        acc.password === password
+      (acc: StoredAccount) =>
+        acc.email.toLowerCase() === email.toLowerCase() && acc.password === password
     );
 
-    if (!matchedUser) {
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      if (newAttempts >= 2) {
-        showNotification("Incorrect credentials again. Use 'Forgot Password?' below to reset.", "error");
-      } else {
-        showNotification(`Incorrect email or password. ${2 - newAttempts} attempt(s) remaining.`, "error");
-      }
+    if (matchedUser) {
+      persistLoggedInUser({
+        id: matchedUser.id,
+        name: matchedUser.name,
+        email: matchedUser.email,
+        role: matchedUser.role,
+      });
+      setFailedAttempts(0);
+      redirectAfterLogin({
+        id: matchedUser.id,
+        name: matchedUser.name,
+        email: matchedUser.email,
+        role: matchedUser.role,
+      });
       return;
     }
 
-    localStorage.setItem("loggedInUser", JSON.stringify({
-      firstName: matchedUser.firstName,
-      lastName: matchedUser.lastName,
-      email: matchedUser.email,
-      userType: matchedUser.userType,
-    }));
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Set auth flag for auth-gated components
-    localStorage.setItem("ustaad_logged_in", "true");
+      if (!res.ok) {
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
 
-    setFailedAttempts(0);
+        if (res.status === 403) {
+          const errorBody = (await res.json()) as { error?: string };
+          showNotification(errorBody.error || "This account cannot log in right now.", "error");
+          return;
+        }
 
-    // Redirect to returnTo destination if present, otherwise default dashboard
-    if (returnTo) {
-      router.push(returnTo);
-    } else if (matchedUser.userType === "garage-owner") {
-      router.push("/garage-dashboard");
-    } else {
-      router.push(returnUrl || "/dashboard");
+        if (newAttempts >= 2) {
+          showNotification("Incorrect credentials again. Use 'Forgot Password?' below to reset.", "error");
+        } else {
+          showNotification(`Incorrect email or password. ${2 - newAttempts} attempt(s) remaining.`, "error");
+        }
+        return;
+      }
+
+      const data = (await res.json()) as { user: LoggedInUser };
+      persistLoggedInUser(data.user);
+      setFailedAttempts(0);
+      redirectAfterLogin(data.user);
+    } catch {
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      showNotification(
+        newAttempts >= 2
+          ? "Login failed again. Check your credentials or try again shortly."
+          : "Unable to sign in right now. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -106,8 +144,8 @@ function LoginContent() {
   const handleVerifyEmail = () => {
     setResetError("");
     if (!resetEmail) { setResetError("Please enter your email address."); return; }
-    const accounts = JSON.parse(localStorage.getItem("ustaad_accounts") || "[]");
-    const found = accounts.find((acc: any) => acc.email?.toLowerCase() === resetEmail.toLowerCase());
+    const accounts = getStoredAccounts();
+    const found = accounts.find((acc) => acc.email.toLowerCase() === resetEmail.toLowerCase());
     if (!found) { setResetError("No account found with this email address."); return; }
     setResetStep("newPassword");
   };
@@ -119,13 +157,13 @@ function LoginContent() {
     if (newPassword !== confirmPassword) { setResetError("Passwords do not match."); return; }
 
     // Update password in ustaad_accounts
-    const accounts = JSON.parse(localStorage.getItem("ustaad_accounts") || "[]");
-    const updated = accounts.map((acc: any) =>
-      acc.email?.toLowerCase() === resetEmail.toLowerCase()
+    const accounts = getStoredAccounts();
+    const updated = accounts.map((acc: StoredAccount) =>
+      acc.email.toLowerCase() === resetEmail.toLowerCase()
         ? { ...acc, password: newPassword }
         : acc
     );
-    localStorage.setItem("ustaad_accounts", JSON.stringify(updated));
+    saveStoredAccounts(updated);
     setResetStep("success");
     setFailedAttempts(0);
   };
@@ -190,7 +228,7 @@ function LoginContent() {
                 </div>
                 <button
                   onClick={handleVerifyEmail}
-                  className="w-full py-3.5 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98]"
+                  className="w-full py-3.5 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-lg"
                 >
                   Continue
                 </button>
@@ -205,7 +243,7 @@ function LoginContent() {
                     <span className="material-symbols-outlined text-secondary text-2xl">key</span>
                   </div>
                   <h2 className="text-2xl font-[family-name:var(--font-headline)] font-bold text-on-surface mb-1">New Password</h2>
-                  <p className="text-on-surface-variant text-sm font-[family-name:var(--font-body)]">Set a strong new password for <span className="text-primary font-semibold">{resetEmail}</span>.</p>
+                  <p className="text-on-surface-variant text-sm font-[family-name:var(--font-body)]">Set a strong new password for <span className="text-primary font-semibold">{resetEmail}</span></p>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -241,7 +279,7 @@ function LoginContent() {
                 </div>
                 <button
                   onClick={handleResetPassword}
-                  className="w-full py-3.5 bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-[0_8px_24px_rgba(246,115,183,0.3)] active:scale-[0.98]"
+                  className="w-full py-3.5 bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-lg"
                 >
                   Reset Password
                 </button>
@@ -262,7 +300,7 @@ function LoginContent() {
                 </div>
                 <button
                   onClick={() => setShowResetModal(false)}
-                  className="w-full py-3.5 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98]"
+                  className="w-full py-3.5 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl font-[family-name:var(--font-headline)] transition-all hover:shadow-lg"
                 >
                   Back to Login
                 </button>
@@ -385,7 +423,7 @@ function LoginContent() {
               </div>
               <button
                 type="submit"
-                className="block w-full text-center bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold py-4 rounded-xl shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-[0.98] transition-all font-[family-name:var(--font-headline)] tracking-tight hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)]"
+                className="block w-full text-center bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold py-4 rounded-xl shadow-[0_8px_24px_rgba(99,102,241,0.3)] active:scale-95 transition-all hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)]"
               >
                 Login to Console
               </button>
@@ -401,7 +439,7 @@ function LoginContent() {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="flex items-center justify-center space-x-3 bg-surface-container-high border border-outline-variant/20 py-3.5 rounded-xl hover:bg-surface-variant transition-all group relative"
+                className="flex items-center justify-center space-x-3 bg-surface-container-high border border-outline-variant/20 py-3.5 rounded-xl hover:bg-surface-variant transition-all group"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path className="text-[#4285F4]" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="currentColor" />
