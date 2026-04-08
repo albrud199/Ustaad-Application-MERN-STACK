@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface Payment {
   id: string;
@@ -13,14 +13,7 @@ interface Payment {
 }
 
 export default function PaymentHistory() {
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // TODO: Fetch payments from API
-    // fetch("/api/dashboard/car-owner/payments")
-    setLoading(false);
-  }, []);
+  const [payments] = useState<Payment[]>([]);
 
   return (
     <DashboardLayout requiredRole="car_owner">

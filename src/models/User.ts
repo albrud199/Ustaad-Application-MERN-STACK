@@ -7,9 +7,22 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: { 
       type: String, 
-      enum: ["car_owner", "garage_owner"], 
+      enum: ["car_owner", "garage_owner", "admin"], 
       required: true 
     },
+    // Account status for admin control
+    status: {
+      type: String,
+      enum: ["active", "suspended", "banned"],
+      default: "active",
+    },
+    // NID Verification
+    nidStatus: {
+      type: String,
+      enum: ["pending", "verified", "rejected"],
+      default: "pending",
+    },
+    nidNumber: { type: String },
     // Car Owner specific fields
     vehicles: [
       {

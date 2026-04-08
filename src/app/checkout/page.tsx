@@ -8,21 +8,25 @@ import { useEffect, useState } from "react";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const [isAuthed, setIsAuthed] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
+  const [authStatus, setAuthStatus] = useState<"checking" | "allowed" | "redirecting">("checking");
 
   useEffect(() => {
-    const loggedIn = localStorage.getItem("ustaad_logged_in") === "true";
-    if (!loggedIn) {
-      router.replace(`/login?returnTo=${encodeURIComponent("/checkout")}`);
-    } else {
-      setIsAuthed(true);
-    }
-    setIsChecking(false);
+    const frameId = window.requestAnimationFrame(() => {
+      const loggedIn = localStorage.getItem("ustaad_logged_in") === "true";
+      if (!loggedIn) {
+        router.replace(`/login?returnTo=${encodeURIComponent("/checkout")}`);
+        setAuthStatus("redirecting");
+        return;
+      }
+
+      setAuthStatus("allowed");
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [router]);
 
   // Show nothing while checking auth / redirecting
-  if (isChecking || !isAuthed) {
+  if (authStatus !== "allowed") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="flex flex-col items-center gap-4">

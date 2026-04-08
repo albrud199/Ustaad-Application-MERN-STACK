@@ -18,13 +18,19 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loggedUser = getLoggedInUser();
-    if (!loggedUser || loggedUser.role !== requiredRole) {
-      router.push("/login");
-      return;
-    }
-    setUser(loggedUser);
-    setLoading(false);
+    const frameId = window.requestAnimationFrame(() => {
+      const loggedUser = getLoggedInUser();
+      if (!loggedUser || loggedUser.role !== requiredRole) {
+        router.replace("/login");
+        setLoading(false);
+        return;
+      }
+
+      setUser(loggedUser);
+      setLoading(false);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [requiredRole, router]);
 
   if (loading) {
