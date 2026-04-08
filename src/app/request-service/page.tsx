@@ -1,12 +1,71 @@
+"use client";
+
+import { useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
+import AuthGateButton from "@/components/AuthGateButton";
 import Image from "next/image";
-import AuthBookingButton from "@/components/AuthBookingButton";
-
-export const metadata = { title: "Request Service | Ustaad" };
 
 export default function RequestServicePage() {
+  const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number; address: string } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle file uploads from gallery
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (files) {
+      Array.from(files).forEach((file) => {
+        const preview = URL.createObjectURL(file);
+        setUploadedImages((prev) => [...prev, { file, preview }]);
+      });
+    }
+    // Clear the input so the same file can be selected again
+    e.currentTarget.value = '';
+  };
+
+  // Handle live location request
+  const handleGetLiveLocation = () => {
+    setLocationLoading(true);
+    setLocationError(null);
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      setLocationLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLocation({
+          latitude,
+          longitude,
+          address: `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`,
+        });
+        setLocationLoading(false);
+        // Optionally, you can use a reverse geocoding service to get the actual address
+      },
+      (error) => {
+        setLocationError(error.message);
+        setLocationLoading(false);
+      }
+    );
+  };
+
+  // Remove an uploaded image
+  const removeImage = (index: number) => {
+    setUploadedImages((prev) => {
+      const newImages = [...prev];
+      URL.revokeObjectURL(newImages[index].preview);
+      newImages.splice(index, 1);
+      return newImages;
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-surface overflow-x-hidden">
       <NebulaBackground />
@@ -108,16 +167,51 @@ export default function RequestServicePage() {
                         <div>
                             <label className="block text-sm font-bold text-on-surface-variant mb-4 uppercase tracking-widest">Visual Evidence</label>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="aspect-square rounded-xl bg-surface-container-highest border-2 border-dashed border-outline-variant/50 flex flex-col items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary hover:bg-primary/5 cursor-pointer transition-colors">
+                                {/* Hidden file input */}
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={handleImageUpload}
+                                  className="hidden"
+                                />
+                                {/* Upload button */}
+                                <button
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="aspect-square rounded-xl bg-surface-container-highest border-2 border-dashed border-outline-variant/50 flex flex-col items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary hover:bg-primary/5 cursor-pointer transition-colors"
+                                >
                                     <span className="material-symbols-outlined text-3xl mb-2">add_a_photo</span>
                                     <span className="text-xs font-bold">Upload</span>
-                                </div>
-                                <div className="aspect-square rounded-xl relative overflow-hidden group cursor-pointer">
-                                    <Image src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMyCKs8p8XmHru3hWXkGFOpELyirfYSCVjlqgoRNPbRhRaA-XPoLtyLrMHo5EdIBxMugebR69SxvziCKEM0DsGCcl5dBVkIHZMNrlTKDQmIhVE0J914sUHg7X3X9htboHiTCw3u7pjfrcM9Tj-lITMCO59edQX859WuGIsX2xTq5YimVCZXnHG82hjyOgsRFo49tTS6UXoRI_X9VCBgsySlpJUjq5mbzReAbClWk-9wdzZ1nSF5WyhkfzdHjr1DJIPAQ-eKZLn04w" alt="Engine issue upload 1" fill className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-                                </div>
-                                <div className="aspect-square rounded-xl relative overflow-hidden group cursor-pointer">
-                                    <Image src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuCak5nvcxWqW3vKfqWQkcg_4SyGdkZC1zNbQiJb7EFIBPdY9z0NFEtjwuL9ljgfg51JoPLrZE26SJbhIWfC0HXfN-NHvig1ZLtvoKKahhoetBQICGBKovQhHeMtsWvtfNfNShYGy9F8Ttx09WcdPaO4a-WOuUZHkJgPJhDKI0gk1pMMYeZNsqaHIU96Ssh7F7B6qXLJXaAQXzr_VnR6u6lyNop_5Ky18-aPoiarI5QLOf0fuv2FY0scWRJ9UgQ7rF1Y3ZqJKCZhk" alt="Tire issue upload 2" fill className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-                                </div>
+                                </button>
+                                {/* Display uploaded images */}
+                                {uploadedImages.map((img, index) => (
+                                  <div key={index} className="aspect-square rounded-xl relative overflow-hidden group cursor-pointer">
+                                    <Image
+                                      src={img.preview}
+                                      alt={`Uploaded image ${index + 1}`}
+                                      fill
+                                      className="object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                                    />
+                                    <button
+                                      onClick={() => removeImage(index)}
+                                      className="absolute top-2 right-2 bg-error/80 hover:bg-error rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <span className="material-symbols-outlined text-on-error text-xl">close</span>
+                                    </button>
+                                  </div>
+                                ))}
+                                {/* Placeholder images if no uploads */}
+                                {uploadedImages.length === 0 && (
+                                  <>
+                                    <div className="aspect-square rounded-xl relative overflow-hidden group cursor-pointer">
+                                      <Image src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMyCKs8p8XmHru3hWXkGFOpELyirfYSCVjlqgoRNPbRhRaA-XPoLtyLrMHo5EdIBxMugebR69SxvziCKEM0DsGCcl5dBVkIHZMNrlTKDQmIhVE0J914sUHg7X3X9htboHiTCw3u7pjfrcM9Tj-lITMCO59edQX859WuGIsX2xTq5YimVCZXnHG82hjyOgsRFo49tTS6UXoRI_X9VCBgsySlpJUjq5mbzReAbClWk-9wdzZ1nSF5WyhkfzdHjr1DJIPAQ-eKZLn04w" alt="Engine issue upload 1" fill className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                    <div className="aspect-square rounded-xl relative overflow-hidden group cursor-pointer">
+                                      <Image src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuCak5nvcxWqW3vKfqWQkcg_4SyGdkZC1zNbQiJb7EFIBPdY9z0NFEtjwuL9ljgfg51JoPLrZE26SJbhIWfC0HXfN-NHvig1ZLtvoKKahhoetBQICGBKovQhHeMtsWvtfNfNShYGy9F8Ttx09WcdPaO4a-WOuUZHkJgPJhDKI0gk1pMMYeZNsqaHIU96Ssh7F7B6qXLJXaAQXzr_VnR6u6lyNop_5Ky18-aPoiarI5QLOf0fuv2FY0scWRJ9UgQ7rF1Y3ZqJKCZhk" alt="Tire issue upload 2" fill className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                  </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -131,17 +225,58 @@ export default function RequestServicePage() {
                         <div className="flex-1 space-y-6">
                             <div className="relative">
                                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary">location_on</span>
-                                <input type="text" placeholder="Enter current address..." className="w-full pl-12 pr-4 py-4 bg-surface-container-highest border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary outline-none text-on-surface" />
+                                <input
+                                  type="text"
+                                  placeholder="Your address will appear here..."
+                                  value={location?.address || ''}
+                                  readOnly
+                                  className="w-full pl-12 pr-4 py-4 bg-surface-container-highest border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary outline-none text-on-surface"
+                                />
                             </div>
-                            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                            <button
+                              onClick={handleGetLiveLocation}
+                              disabled={locationLoading}
+                              className="w-full px-6 py-4 rounded-xl bg-primary text-on-primary-fixed font-bold hover:bg-primary-dim disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                            >
+                              <span className="material-symbols-outlined">
+                                {locationLoading ? 'refresh' : 'my_location'}
+                              </span>
+                              {locationLoading ? 'Getting Location...' : 'Get Live Location'}
+                            </button>
+                            {locationError && (
+                              <div className="p-4 rounded-xl bg-error/10 border border-error/20">
                                 <div className="flex items-start gap-3">
-                                    <span className="material-symbols-outlined text-primary">my_location</span>
-                                    <div>
-                                        <p className="text-sm font-bold text-primary">Live Tracking Enabled</p>
-                                        <p className="text-xs text-on-surface-variant">Our mechanics will navigate directly to your current celestial coordinates.</p>
-                                    </div>
+                                  <span className="material-symbols-outlined text-error">warning</span>
+                                  <div>
+                                    <p className="text-sm font-bold text-error">Location Error</p>
+                                    <p className="text-xs text-on-surface-variant">{locationError}</p>
+                                  </div>
                                 </div>
-                            </div>
+                              </div>
+                            )}
+                            {location && (
+                              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                                <div className="flex items-start gap-3">
+                                  <span className="material-symbols-outlined text-primary">check_circle</span>
+                                  <div>
+                                    <p className="text-sm font-bold text-primary">Live Location Captured</p>
+                                    <p className="text-xs text-on-surface-variant">Latitude: {location.latitude.toFixed(6)}</p>
+                                    <p className="text-xs text-on-surface-variant">Longitude: {location.longitude.toFixed(6)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {!location && !locationError && (
+                              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                                <div className="flex items-start gap-3">
+                                  <span className="material-symbols-outlined text-primary">my_location</span>
+                                  <div>
+                                    <p className="text-sm font-bold text-primary">Live Tracking Ready</p>
+                                    <p className="text-xs text-on-surface-variant">Click the button above to enable live location tracking for your service request.</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                         </div>
                         
                         <div className="w-full md:w-1/2 h-64 rounded-2xl overflow-hidden border border-outline-variant/30 relative group">
@@ -158,12 +293,14 @@ export default function RequestServicePage() {
                     <button className="px-8 py-4 text-on-surface-variant font-bold hover:text-on-surface transition-colors flex items-center gap-2">
                         <span className="material-symbols-outlined">arrow_back</span> Save Draft
                     </button>
-                    <AuthBookingButton
-                        label="Initialize Service Order"
-                        icon="rocket_launch"
-                        bookingPath="/service-results"
-                        className="w-full md:w-auto px-12 py-5 rounded-2xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
-                    />
+                    <AuthGateButton
+                      href="/service-results"
+                      returnTo="/request-service"
+                      className="w-full md:w-auto px-12 py-5 rounded-2xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+                    >
+                      Initialize Service Order
+                      <span className="material-symbols-outlined">rocket_launch</span>
+                    </AuthGateButton>
                 </div>
 
             </div>

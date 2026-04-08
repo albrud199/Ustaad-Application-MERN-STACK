@@ -6,6 +6,17 @@ import Footer from "@/components/Footer";
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { persistLoggedInUser, saveStoredAccounts, getStoredAccounts, type StoredAccount, type UserRole } from "@/lib/auth";
+
+interface RegistrationData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  password: string;
+  role?: UserRole;
+  userType?: "car-owner" | "garage-owner";
+}
 
 export default function NIDVerificationPage() {
   const router = useRouter();
@@ -15,7 +26,7 @@ export default function NIDVerificationPage() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<RegistrationData | null>(null);
   const nidFrontRef = useRef<HTMLInputElement>(null);
   const nidBackRef = useRef<HTMLInputElement>(null);
   const selfieRef = useRef<HTMLInputElement>(null);
@@ -67,15 +78,16 @@ export default function NIDVerificationPage() {
       streamRef.current = stream;
       setActiveStream(stream);
       setIsCameraActive(true);
-    } catch (error: any) {
-      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+    } catch (error: unknown) {
+      const cameraError = error as { name?: string; message?: string };
+      if (cameraError.name === 'NotAllowedError' || cameraError.name === 'PermissionDeniedError') {
         alert('Camera permission denied. Please allow access to your camera in your browser settings and try again.');
-      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      } else if (cameraError.name === 'NotFoundError' || cameraError.name === 'DevicesNotFoundError') {
         alert('No camera found on your device. Please use the file upload option instead.');
-      } else if (error.name === 'NotReadableError') {
+      } else if (cameraError.name === 'NotReadableError') {
         alert('Camera is already in use by another application. Please close it and try again.');
       } else {
-        alert(`Unable to access camera: ${error.message || 'Unknown error'}. Please try again.`);
+        alert(`Unable to access camera: ${cameraError.message || 'Unknown error'}. Please try again.`);
       }
     }
   };
@@ -152,29 +164,40 @@ export default function NIDVerificationPage() {
       localStorage.setItem('nidVerificationData', JSON.stringify(submissionData));
 
       // Persist user credentials to a persistent accounts store so login works
-      const existingAccounts = JSON.parse(localStorage.getItem('ustaad_accounts') || '[]');
-      const alreadyExists = existingAccounts.some((acc: any) => acc.email === userData.email);
+      const existingAccounts = getStoredAccounts();
+      const resolvedRole: UserRole =
+        userData.role ?? (userData.userType === "garage-owner" ? "garage_owner" : "car_owner");
+      const alreadyExists = existingAccounts.some((acc) => acc.email === userData.email.toLowerCase());
       if (!alreadyExists) {
         existingAccounts.push({
+          id: Date.now().toString(),
+          name: `${userData.firstName} ${userData.lastName}`.trim(),
           firstName: userData.firstName,
           lastName: userData.lastName,
-          email: userData.email,
+          email: userData.email.toLowerCase(),
           phone: userData.phone,
           password: userData.password,
-          userType: userData.userType,
-          registeredAt: new Date().toISOString(),
-        });
-        localStorage.setItem('ustaad_accounts', JSON.stringify(existingAccounts));
+          role: resolvedRole,
+        } satisfies StoredAccount);
+        saveStoredAccounts(existingAccounts);
       }
+
+      // Set the logged-in session for the new user
+      persistLoggedInUser({
+        id: existingAccounts.find((acc) => acc.email === userData.email.toLowerCase())?.id ?? Date.now().toString(),
+        name: `${userData.firstName} ${userData.lastName}`.trim(),
+        email: userData.email.toLowerCase(),
+        role: resolvedRole,
+      });
 
       // Clear the temporary registration data
       localStorage.removeItem('registrationData');
 
       // Show success message
-      alert('✓ Your account has been created successfully!\n\nYour identity documents will be verified within 24 hours. Please log in to continue.');
+      alert('✓ Your account has been created successfully!\n\nYour identity documents will be verified within 24 hours.');
 
-      // Redirect to login page
-      router.push('/login');
+      // Redirect to the dashboard (which will redirect to the correct role-specific dashboard)
+      router.push('/dashboard');
     } catch (error) {
       console.error('Submission error:', error);
       alert('Failed to submit verification. Please try again.');
@@ -252,7 +275,7 @@ export default function NIDVerificationPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-on-surface-variant uppercase tracking-widest text-[10px] font-bold font-[family-name:var(--font-label)]">User Type</label>
-                  <p className="text-on-surface text-lg font-medium capitalize">{userData?.userType || 'Not provided'}</p>
+                  <p className="text-on-surface text-lg font-medium capitalize">{userData?.role?.replace("_", " ") || userData?.userType || 'Not provided'}</p>
                 </div>
               </div>
             </div>
