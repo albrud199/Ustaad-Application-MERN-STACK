@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import NebulaBackground from "@/components/NebulaBackground";
 
 export const metadata = { title: "Admin Dashboard | Ustaad" };
 

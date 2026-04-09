@@ -1,10 +1,42 @@
+"use client";
+
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
 import Image from "next/image";
-
-export const metadata = { title: "Secure Checkout | Ustaad" };
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function CheckoutPage() {
+  const router = useRouter();
+  const [authStatus, setAuthStatus] = useState<"checking" | "allowed" | "redirecting">("checking");
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      const loggedIn = localStorage.getItem("ustaad_logged_in") === "true";
+      if (!loggedIn) {
+        router.replace(`/login?returnTo=${encodeURIComponent("/checkout")}`);
+        setAuthStatus("redirecting");
+        return;
+      }
+
+      setAuthStatus("allowed");
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [router]);
+
+  // Show nothing while checking auth / redirecting
+  if (authStatus !== "allowed") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-4">
+          <span className="material-symbols-outlined text-primary text-5xl animate-pulse">lock</span>
+          <p className="text-on-surface-variant">Verifying access…</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-on-background selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
       <NebulaBackground />
@@ -13,15 +45,18 @@ export default function CheckoutPage() {
       <nav className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-primary/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
         <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
             <div className="flex items-center gap-4">
-                <Link href="/dashboard" className="text-on-surface-variant hover:text-primary active:scale-95 transition-all">
+                <button
+                  onClick={() => router.back()}
+                  className="text-on-surface-variant hover:text-primary active:scale-95 transition-all"
+                >
                     <span className="material-symbols-outlined">arrow_back</span>
-                </Link>
+                </button>
                 <h1 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary mr-2 to-secondary font-[family-name:var(--font-headline)]">Ustaad</h1>
             </div>
             <div className="flex items-center gap-6">
                 <div className="hidden md:flex items-center gap-6">
-                    <Link href="/help" className="text-on-surface-variant hover:text-primary transition-colors font-[family-name:var(--font-body)] text-sm">Support</Link>
-                    <Link href="/security" className="text-on-surface-variant hover:text-primary transition-colors font-[family-name:var(--font-body)] text-sm">Security</Link>
+                    <Link href="/help-support" className="text-on-surface-variant hover:text-primary transition-colors font-[family-name:var(--font-body)] text-sm">Support</Link>
+                    <Link href="/security-password" className="text-on-surface-variant hover:text-primary transition-colors font-[family-name:var(--font-body)] text-sm">Security</Link>
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
@@ -38,7 +73,7 @@ export default function CheckoutPage() {
             <div className="lg:col-span-7 space-y-10">
                 <header>
                     <h2 className="text-4xl font-extrabold font-[family-name:var(--font-headline)] tracking-tight text-on-surface mb-2">Complete Checkout</h2>
-                    <p className="text-on-surface-variant">Secure your booking with Ustaad's celestial tier protection.</p>
+                    <p className="text-on-surface-variant">Secure your booking with Ustaad&apos;s celestial tier protection.</p>
                 </header>
 
                 {/* Payment Method Selection */}
@@ -193,8 +228,8 @@ export default function CheckoutPage() {
       <footer className="py-12 px-6 border-t border-outline-variant/10 mt-auto bg-surface-container-lowest">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                <Link href="/terms" className="hover:text-primary transition-colors">Privacy Policy</Link>
-                <Link href="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+                <Link href="/terms-conditions" className="hover:text-primary transition-colors">Privacy Policy</Link>
+                <Link href="/terms-conditions" className="hover:text-primary transition-colors">Terms of Service</Link>
                 <Link href="#" className="hover:text-primary transition-colors">Refund Policy</Link>
             </div>
             <p className="text-xs text-on-surface-variant font-medium">© 2024 Ustaad Technologies. All Rights Reserved.</p>
