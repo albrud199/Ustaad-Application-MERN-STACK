@@ -50,6 +50,8 @@ function LoginContent() {
       router.push("/admin");
     } else if (user.role === "garage_owner") {
       router.push("/dashboard/garage-owner");
+    } else if (user.role === "repairshop_owner") {
+      router.push("/dashboard/repairshop-owner");
     } else {
       router.push("/dashboard/car-owner");
     }

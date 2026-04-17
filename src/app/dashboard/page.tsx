@@ -17,6 +17,8 @@ export default function DashboardPage() {
 
     if (user.role === "garage_owner") {
       router.replace("/dashboard/garage-owner");
+    } else if (user.role === "repairshop_owner") {
+      router.replace("/dashboard/repairshop-owner");
     } else {
       router.replace("/dashboard/car-owner");
     }

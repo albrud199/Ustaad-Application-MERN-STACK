@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type UserRole = "car_owner" | "garage_owner";
+type UserRole = "car_owner" | "garage_owner" | "repairshop_owner";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -110,7 +110,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Role Selection */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <button
                 type="button"
                 onClick={() => setSelectedRole("car_owner")}
@@ -156,6 +156,30 @@ export default function RegisterPage() {
                 </span>
                 {selectedRole === "garage_owner" && (
                   <span className="text-[10px] font-bold uppercase tracking-widest text-secondary/70 font-[family-name:var(--font-label)]">Selected</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedRole("repairshop_owner")}
+                disabled={isLoading}
+                className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all border-2 disabled:opacity-50 ${
+                  selectedRole === "repairshop_owner"
+                    ? "border-tertiary bg-tertiary/10 shadow-[0_0_20px_rgba(106,176,255,0.2)]"
+                    : "border-outline-variant/30 bg-surface-container-high hover:border-tertiary/40 hover:bg-tertiary/5"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined text-3xl transition-colors ${selectedRole === "repairshop_owner" ? "text-tertiary" : "text-on-surface-variant"}`}
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  build
+                </span>
+                <span className={`font-[family-name:var(--font-headline)] text-sm font-bold transition-colors ${selectedRole === "repairshop_owner" ? "text-tertiary" : "text-on-surface-variant"}`}>
+                  Repair Shop Owner
+                </span>
+                {selectedRole === "repairshop_owner" && (
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-tertiary/70 font-[family-name:var(--font-label)]">Selected</span>
                 )}
               </button>
             </div>
@@ -230,12 +254,14 @@ export default function RegisterPage() {
               <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest font-[family-name:var(--font-label)] border ${
                 selectedRole === "garage_owner"
                   ? "text-secondary border-secondary/20 bg-secondary/5"
+                  : selectedRole === "repairshop_owner"
+                  ? "text-tertiary border-tertiary/20 bg-tertiary/5"
                   : "text-primary border-primary/20 bg-primary/5"
               }`}>
                 <span className="material-symbols-outlined text-sm">
-                  {selectedRole === "garage_owner" ? "garage" : "directions_car"}
+                  {selectedRole === "garage_owner" ? "garage" : selectedRole === "repairshop_owner" ? "build" : "directions_car"}
                 </span>
-                Registering as: {selectedRole === "garage_owner" ? "Garage Owner" : "Car Owner"}
+                Registering as: {selectedRole === "garage_owner" ? "Garage Owner" : selectedRole === "repairshop_owner" ? "Repair Shop Owner" : "Car Owner"}
               </div>
 
               {/* ✅ UPDATE BUTTON: Show loading state */}
@@ -245,6 +271,8 @@ export default function RegisterPage() {
                 className={`block w-full text-center font-bold py-4 rounded-xl active:scale-[0.98] transition-all font-[family-name:var(--font-headline)] tracking-tight mt-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   selectedRole === "garage_owner"
                     ? "bg-gradient-to-r from-secondary to-tertiary-dim text-on-secondary-fixed shadow-[0_8px_24px_rgba(246,115,183,0.3)] hover:shadow-[0_12px_32px_rgba(246,115,183,0.4)]"
+                    : selectedRole === "repairshop_owner"
+                    ? "bg-gradient-to-r from-tertiary to-primary text-on-primary-fixed shadow-[0_8px_24px_rgba(106,176,255,0.3)] hover:shadow-[0_12px_32px_rgba(106,176,255,0.4)]"
                     : "bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed shadow-[0_8px_24px_rgba(99,102,241,0.3)] hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)]"
                 }`}
               >

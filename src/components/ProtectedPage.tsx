@@ -1,13 +1,13 @@
 // src/components/ProtectedPage.tsx
 "use client";
 
-import { useEffect, ReactNode } from "react";
+import { useEffect, ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getLoggedInUser } from "@/lib/auth";
+import { getLoggedInUser, type LoggedInUser } from "@/lib/auth";
 
 interface ProtectedPageProps {
   children: ReactNode;
-  requiredRole?: "car_owner" | "garage_owner" | "admin" | undefined;
+  requiredRole?: "car_owner" | "garage_owner" | "repairshop_owner" | "admin" | undefined;
 }
 
 export function ProtectedPage({ 
@@ -15,35 +15,32 @@ export function ProtectedPage({
   requiredRole 
 }: ProtectedPageProps) {
   const router = useRouter();
-  const user = getLoggedInUser();
+  const [user, setUser] = useState<LoggedInUser | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    const currentUser = getLoggedInUser();
+
     // ===== CHECK IF USER EXISTS =====
-    if (!user) {
+    if (!currentUser) {
       router.push("/login");
+      setIsReady(true);
       return;
     }
 
     // ===== CHECK IF ROLE MATCHES =====
-    if (requiredRole && user.role !== requiredRole) {
+    if (requiredRole && currentUser.role !== requiredRole) {
       router.push("/dashboard");
+      setIsReady(true);
       return;
     }
-  }, [user, router, requiredRole]);
 
-  // ===== IF NO USER, SHOW LOADING =====
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <span className="material-symbols-outlined text-primary text-5xl animate-spin">
-            lock
-          </span>
-          <p className="mt-4 text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+    setUser(currentUser);
+    setIsReady(true);
+  }, [router, requiredRole]);
+
+  // Keep initial server/client markup identical to prevent hydration mismatch.
+  if (!isReady || !user) return null;
 
   // ===== RENDER PROTECTED CONTENT =====
   return <>{children}</>;

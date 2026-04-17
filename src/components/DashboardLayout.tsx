@@ -11,7 +11,7 @@ export default function DashboardLayout({
   requiredRole 
 }: { 
   children: React.ReactNode; 
-  requiredRole: "car_owner" | "garage_owner" 
+  requiredRole: "car_owner" | "garage_owner" | "repairshop_owner" 
 }) {
   const router = useRouter();
   const [user, setUser] = useState<LoggedInUser | null>(null);
@@ -50,7 +50,12 @@ export default function DashboardLayout({
 
   if (!user) return null;
 
-  const homeHref = requiredRole === "car_owner" ? "/search-parking" : "/dashboard/garage-owner";
+  const homeHref =
+    requiredRole === "car_owner"
+      ? "/search-parking"
+      : requiredRole === "garage_owner"
+        ? "/dashboard/garage-owner"
+        : "/dashboard/repairshop-owner";
 
   const handleLogout = () => {
     logout();
@@ -72,7 +77,7 @@ export default function DashboardLayout({
             </span>
           </Link>
           <p className="text-xs text-on-surface-variant uppercase tracking-wider mt-1">
-            {requiredRole === "car_owner" ? "Driver Hub" : "Garage Hub"}
+            {requiredRole === "car_owner" ? "Driver Hub" : requiredRole === "garage_owner" ? "Garage Hub" : "Repair Hub"}
           </p>
         </div>
 
@@ -95,17 +100,25 @@ export default function DashboardLayout({
               <NavLink href="/dashboard/car-owner" label="Dashboard" icon="dashboard" />
               <NavLink href="/search-parking" label="Find Parking" icon="local_parking" />
               <NavLink href="/request-service" label="Services" icon="build" />
+              <NavLink href="/dashboard/car-owner/service-requests" label="Service Requests" icon="construction" />
               <NavLink href="/dashboard/car-owner/my-bookings" label="My Bookings" icon="calendar_today" />
               <NavLink href="/dashboard/car-owner/my-vehicles" label="My Vehicles" icon="directions_car" />
               <NavLink href="/dashboard/car-owner/payment-history" label="Payments" icon="credit_card" />
             </>
-          ) : (
+          ) : requiredRole === "garage_owner" ? (
             <>
               <NavLink href="/dashboard/garage-owner" label="Dashboard" icon="dashboard" />
               <NavLink href="/dashboard/garage-owner/manage-parking" label="Manage Parking" icon="local_parking" />
               <NavLink href="/dashboard/garage-owner/bookings" label="Bookings" icon="list" />
               <NavLink href="/dashboard/garage-owner/earnings" label="Earnings" icon="attach_money" />
               <NavLink href="/dashboard/garage-owner/settings" label="Settings" icon="settings" />
+            </>
+          ) : (
+            <>
+              <NavLink href="/dashboard/repairshop-owner" label="Dashboard" icon="dashboard" />
+              <NavLink href="/dashboard/repairshop-owner/requests" label="Requests" icon="build" />
+              <NavLink href="/dashboard/repairshop-owner/history" label="History" icon="history" />
+              <NavLink href="/dashboard/repairshop-owner/settings" label="Settings" icon="settings" />
             </>
           )}
         </nav>

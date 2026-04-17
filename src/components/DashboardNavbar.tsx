@@ -20,17 +20,31 @@ const garageOwnerNavLinks = [
   { href: "/dashboard/garage-owner/settings", label: "Settings", icon: "settings" },
 ];
 
-export default function DashboardNavbar({ userType }: { userType?: "car-owner" | "garage-owner" }) {
+const repairshopOwnerNavLinks = [
+  { href: "/dashboard/repairshop-owner", label: "Dashboard", icon: "dashboard" },
+  { href: "/dashboard/repairshop-owner/requests", label: "Requests", icon: "build" },
+  { href: "/dashboard/repairshop-owner/history", label: "History", icon: "history" },
+  { href: "/dashboard/repairshop-owner/settings", label: "Settings", icon: "settings" },
+];
+
+export default function DashboardNavbar({ userType }: { userType?: "car-owner" | "garage-owner" | "repairshop-owner" }) {
   const pathname = usePathname();
   const user = getLoggedInUser();
   const resolvedUserType =
-    userType ?? (user?.role === "garage_owner" ? "garage-owner" : "car-owner");
-  const navLinks = resolvedUserType === "garage-owner" ? garageOwnerNavLinks : carOwnerNavLinks;
+    userType ?? (user?.role === "garage_owner" ? "garage-owner" : user?.role === "repairshop_owner" ? "repairshop-owner" : "car-owner");
+  const navLinks =
+    resolvedUserType === "garage-owner"
+      ? garageOwnerNavLinks
+      : resolvedUserType === "repairshop-owner"
+        ? repairshopOwnerNavLinks
+        : carOwnerNavLinks;
   const homeHref =
     user?.role === "car_owner"
       ? "/search-parking"
       : user?.role === "garage_owner"
       ? "/dashboard/garage-owner"
+      : user?.role === "repairshop_owner"
+      ? "/dashboard/repairshop-owner"
       : user?.role === "admin"
       ? "/admin"
       : "/";
@@ -38,6 +52,8 @@ export default function DashboardNavbar({ userType }: { userType?: "car-owner" |
   const profileHref =
     user?.role === "garage_owner"
       ? "/dashboard/garage-owner/settings"
+      : user?.role === "repairshop_owner"
+      ? "/dashboard/repairshop-owner/settings"
       : user?.role === "admin"
       ? "/admin/settings"
       : "/user-profile";

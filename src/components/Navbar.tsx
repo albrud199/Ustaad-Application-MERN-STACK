@@ -15,6 +15,8 @@ export default function Navbar() {
       ? "/user-profile"
       : user?.role === "garage_owner"
       ? "/dashboard/garage-owner/settings"
+      : user?.role === "repairshop_owner"
+      ? "/dashboard/repairshop-owner/settings"
       : user?.role === "admin"
       ? "/admin/settings"
       : "/login";
@@ -24,6 +26,8 @@ export default function Navbar() {
       ? "Car Owner"
       : user?.role === "garage_owner"
       ? "Garage Owner"
+      : user?.role === "repairshop_owner"
+      ? "Repair Shop Owner"
       : user?.role === "admin"
       ? "Admin"
       : "";
@@ -33,6 +37,8 @@ export default function Navbar() {
       ? "/dashboard/car-owner"
       : user?.role === "garage_owner"
       ? "/dashboard/garage-owner"
+      : user?.role === "repairshop_owner"
+      ? "/dashboard/repairshop-owner"
       : user?.role === "admin"
       ? "/admin"
       : "/";
@@ -42,6 +48,8 @@ export default function Navbar() {
       ? "/search-parking"
       : user?.role === "garage_owner"
       ? "/dashboard/garage-owner"
+      : user?.role === "repairshop_owner"
+      ? "/dashboard/repairshop-owner"
       : user?.role === "admin"
       ? "/admin"
       : "/";

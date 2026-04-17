@@ -1,8 +1,63 @@
 // src/app/api/service-requests/create/route.ts
 import { dbConnect } from "@/lib/mongoose";
 import ServiceRequest from "@/models/ServiceRequest";
+import Repairshop from "@/models/Repairshop";
+import Conversation from "@/models/Conversation";
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+
+type ServiceType = "general" | "emergency" | "repair" | "maintenance" | "inspection" | "cleaning";
+
+function normalizeServiceType(serviceType: string): { serviceType: ServiceType; serviceMode: "general" | "emergency" } {
+  if (serviceType === "emergency" || serviceType === "maintenance") {
+    return { serviceType: serviceType as ServiceType, serviceMode: "emergency" };
+  }
+
+  return {
+    serviceType: serviceType === "repair" ? "general" : (serviceType as ServiceType),
+    serviceMode: "general",
+  };
+}
+
+function distanceKm(latitudeA: number, longitudeA: number, latitudeB: number, longitudeB: number) {
+  const earthRadiusKm = 6371;
+  const deltaLatitude = ((latitudeB - latitudeA) * Math.PI) / 180;
+  const deltaLongitude = ((longitudeB - longitudeA) * Math.PI) / 180;
+  const a =
+    Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2) +
+    Math.cos((latitudeA * Math.PI) / 180) * Math.cos((latitudeB * Math.PI) / 180) *
+      Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function pickRepairshop({
+  latitude,
+  longitude,
+  repairshopId,
+}: {
+  latitude?: number;
+  longitude?: number;
+  repairshopId?: string;
+}) {
+  if (repairshopId) {
+    const selected = await Repairshop.findOne({ _id: repairshopId, status: "active" }).populate("ownerId", "name email phone").lean();
+    if (selected) return selected;
+  }
+
+  const shops = await Repairshop.find({ status: "active" }).populate("ownerId", "name email phone").lean();
+  if (shops.length === 0) return null;
+
+  if (typeof latitude !== "number" || typeof longitude !== "number") {
+    return shops[0];
+  }
+
+  return shops
+    .map((shop) => ({
+      shop,
+      distance: distanceKm(latitude, longitude, Number(shop.latitude || 0), Number(shop.longitude || 0)),
+    }))
+    .sort((left, right) => left.distance - right.distance)[0]?.shop ?? shops[0];
+}
 
 function verifyToken(token: string) {
   try {
@@ -46,6 +101,7 @@ export async function POST(request: NextRequest) {
       longitude,
       preferredDate,
       preferredTime,
+      repairshopId,
     } = body;
 
     // ===== VALIDATE REQUIRED FIELDS =====
@@ -60,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ===== VALIDATE SERVICE TYPE =====
-    const validServiceTypes = ["repair", "maintenance", "inspection", "cleaning"];
+    const validServiceTypes = ["general", "emergency", "repair", "maintenance", "inspection", "cleaning"];
     if (!validServiceTypes.includes(serviceType)) {
       return NextResponse.json(
         { 
@@ -71,9 +127,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ===== CREATE SERVICE REQUEST =====
+    const normalized = normalizeServiceType(serviceType);
+    const repairshop = await pickRepairshop({
+      latitude: typeof latitude === "number" ? latitude : undefined,
+      longitude: typeof longitude === "number" ? longitude : undefined,
+      repairshopId: typeof repairshopId === "string" ? repairshopId : undefined,
+    });
+
     const serviceRequest = new ServiceRequest({
       carOwnerId: decoded.userId,
-      serviceType,
+      serviceType: normalized.serviceType,
+      serviceMode: normalized.serviceMode,
       problemDescription,
       carDetails: carDetails || {},
       location,
@@ -82,15 +146,32 @@ export async function POST(request: NextRequest) {
       preferredDate: preferredDate ? new Date(preferredDate) : undefined,
       preferredTime,
       images: Array.isArray(body.images) ? body.images : [],
-      status: "open",
+      status: repairshop ? "assigned" : "open",
+      assignedRepairshopId: repairshop?._id,
+      assignedRepairshopOwnerId: repairshop?.ownerId?._id || repairshop?.ownerId,
     });
 
     await serviceRequest.save();
 
+    if (repairshop) {
+      const conversation = await Conversation.create({
+        serviceRequestId: serviceRequest._id,
+        participants: [decoded.userId, repairshop.ownerId?._id || repairshop.ownerId],
+        lastMessageAt: new Date(),
+        lastMessagePreview: "Service request created.",
+        status: "active",
+      });
+
+      serviceRequest.conversationId = conversation._id;
+      await serviceRequest.save();
+    }
+
     // ===== RETURN RESPONSE =====
     return NextResponse.json(
       {
-        message: "✅ Service request created successfully. We'll assign a garage soon.",
+        message: repairshop
+          ? "✅ Service request created successfully and assigned to a repair shop."
+          : "✅ Service request created successfully. We'll assign a repair shop soon.",
         serviceRequest,
       },
       { status: 201 }

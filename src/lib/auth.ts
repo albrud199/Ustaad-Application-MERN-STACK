@@ -1,10 +1,10 @@
 /**
  * Ustaad Auth Utility
  * Uses the same localStorage key as the login page ("loggedInUser").
- * Supports car_owner, garage_owner, and admin roles.
+ * Supports car_owner, garage_owner, repairshop_owner, and admin roles.
  */
 
-export type UserRole = "car_owner" | "garage_owner" | "admin";
+export type UserRole = "car_owner" | "garage_owner" | "repairshop_owner" | "admin";
 
 export interface LoggedInUser {
   id: string;
