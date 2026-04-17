@@ -3,12 +3,53 @@
 import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
+type Vehicle = {
+  vehicleId?: string;
+  licensePlate?: string;
+  model?: string;
+  color?: string;
+};
+
+function formatBDT(value: number) {
+  return `BDT ${value.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function hoursBetween(startTime: string, endTime: string) {
+  if (!startTime || !endTime) return 4;
+
+  const [startHours, startMinutes] = startTime.split(":").map(Number);
+  const [endHours, endMinutes] = endTime.split(":").map(Number);
+  const start = startHours + startMinutes / 60;
+  let end = endHours + endMinutes / 60;
+
+  if (end <= start) end += 24;
+  return Math.max(0.5, end - start);
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [authStatus, setAuthStatus] = useState<"checking" | "allowed" | "redirecting">("checking");
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const parkingId = searchParams.get("parkingId") || "";
+  const parkingName = searchParams.get("parkingName") || "Selected Parking";
+  const parkingLocation = searchParams.get("location") || searchParams.get("city") || "Parking location";
+  const hourlyRate = Number(searchParams.get("rate") || searchParams.get("pricePerHour") || "0") || 0;
+  const defaultStart = searchParams.get("start") || "14:00";
+  const defaultEnd = searchParams.get("end") || "18:00";
+  const defaultDate = searchParams.get("date") || new Date().toISOString().slice(0, 10);
+
+  const [bookingDate, setBookingDate] = useState(defaultDate);
+  const [startTime, setStartTime] = useState(defaultStart);
+  const [endTime, setEndTime] = useState(defaultEnd);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -25,7 +66,117 @@ export default function CheckoutPage() {
     return () => window.cancelAnimationFrame(frameId);
   }, [router]);
 
-  // Show nothing while checking auth / redirecting
+  useEffect(() => {
+    const loadVehicles = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) return;
+
+      try {
+        const response = await fetch("/api/dashboard/car-owner/vehicles", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as { vehicles?: Vehicle[] };
+        setVehicles(payload.vehicles || []);
+        setSelectedVehicleId(payload.vehicles?.[0]?.vehicleId || "");
+      } catch {
+        setVehicles([]);
+      }
+    };
+
+    if (authStatus === "allowed") loadVehicles();
+  }, [authStatus]);
+
+  const durationHours = useMemo(() => hoursBetween(startTime, endTime), [startTime, endTime]);
+  const subtotal = useMemo(() => hourlyRate * durationHours, [hourlyRate, durationHours]);
+  const serviceFee = useMemo(() => subtotal * 0.05, [subtotal]);
+  const platformFee = useMemo(() => durationHours * 10, [durationHours]);
+  const total = subtotal + serviceFee + platformFee;
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.vehicleId === selectedVehicleId) || vehicles[0];
+
+  const handleCheckout = async () => {
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("Login expired. Please sign in again.");
+      }
+
+      if (!selectedVehicle) {
+        throw new Error("Add a vehicle before checking out.");
+      }
+
+      const start = new Date(`${bookingDate}T${startTime}:00`);
+      let end = new Date(`${bookingDate}T${endTime}:00`);
+      if (end <= start) {
+        end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+      }
+
+      let bookingId = "";
+
+      if (parkingId) {
+        const bookingResponse = await fetch("/api/bookings/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            parkingId,
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            vehicleDetails: {
+              licensePlate: selectedVehicle.licensePlate || "",
+              model: selectedVehicle.model || "",
+              color: selectedVehicle.color || "",
+            },
+          }),
+        });
+
+        if (bookingResponse.ok) {
+          const bookingPayload = (await bookingResponse.json()) as { booking?: { _id?: string } };
+          bookingId = bookingPayload.booking?._id || "";
+        }
+      }
+
+      if (bookingId) {
+        await fetch("/api/dashboard/car-owner/payment-history", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            referenceType: "booking",
+            referenceId: bookingId,
+            amount: Number(total.toFixed(2)),
+            currency: "BDT",
+            paymentMethod,
+            status: "completed",
+            description: `Parking payment for ${parkingName}`,
+            metadata: {
+              parkingId,
+              parkingName,
+              bookingDate,
+              startTime,
+              endTime,
+              durationHours,
+            },
+          }),
+        });
+      }
+
+      router.push(
+        `/booking-confirmation?parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(bookingDate)}&start=${encodeURIComponent(startTime)}&end=${encodeURIComponent(endTime)}`
+      );
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Checkout failed.");
+      setSubmitting(false);
+    }
+  };
+
   if (authStatus !== "allowed") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
@@ -40,199 +191,155 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-on-background selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
       <NebulaBackground />
-      
-      {/* Checkout Navbar - Focused task header */}
+
       <nav className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-primary/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
         <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
-            <div className="flex items-center gap-4">
-                <button
-                  onClick={() => router.back()}
-                  className="text-on-surface-variant hover:text-primary active:scale-95 transition-all"
-                >
-                    <span className="material-symbols-outlined">arrow_back</span>
-                </button>
-                <h1 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary mr-2 to-secondary font-[family-name:var(--font-headline)]">Ustaad</h1>
-            </div>
-            <div className="flex items-center gap-6">
-                <div className="hidden md:flex items-center gap-6">
-                    <Link href="/help-support" className="text-on-surface-variant hover:text-primary transition-colors font-[family-name:var(--font-body)] text-sm">Support</Link>
-                    <Link href="/security-password" className="text-on-surface-variant hover:text-primary transition-colors font-[family-name:var(--font-body)] text-sm">Security</Link>
-                </div>
-                <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
-                    <span className="material-symbols-outlined text-primary">lock</span>
-                </div>
-            </div>
+          <div className="flex items-center gap-4">
+            <button onClick={() => router.back()} className="text-on-surface-variant hover:text-primary active:scale-95 transition-all">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary mr-2 to-secondary font-[family-name:var(--font-headline)]">Ustaad</h1>
+          </div>
+          <div className="hidden md:flex items-center gap-6">
+            <Link href="/help-support" className="text-on-surface-variant hover:text-primary transition-colors font-[family-name:var(--font-body)] text-sm">Support</Link>
+            <Link href="/security-password" className="text-on-surface-variant hover:text-primary transition-colors font-[family-name:var(--font-body)] text-sm">Security</Link>
+          </div>
         </div>
       </nav>
 
       <main className="flex-1 pt-28 pb-20 px-6 max-w-7xl mx-auto w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-            
-            {/* Left Column: Payment Details */}
-            <div className="lg:col-span-7 space-y-10">
-                <header>
-                    <h2 className="text-4xl font-extrabold font-[family-name:var(--font-headline)] tracking-tight text-on-surface mb-2">Complete Checkout</h2>
-                    <p className="text-on-surface-variant">Secure your booking with Ustaad&apos;s celestial tier protection.</p>
-                </header>
+          <div className="lg:col-span-7 space-y-10">
+            <header>
+              <h2 className="text-4xl font-extrabold font-[family-name:var(--font-headline)] tracking-tight text-on-surface mb-2">Complete Checkout</h2>
+              <p className="text-on-surface-variant">Secure your booking with real pricing in BDT.</p>
+            </header>
 
-                {/* Payment Method Selection */}
-                <section className="space-y-6">
-                    <h3 className="text-xl font-bold font-[family-name:var(--font-headline)] text-on-surface">Select Payment Method</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <label className="relative cursor-pointer group">
-                            <input type="radio" name="payment_method" className="peer sr-only" defaultChecked />
-                            <div className="glass-card p-6 rounded-xl flex flex-col items-center gap-3 border border-outline-variant/20 peer-checked:border-primary peer-checked:bg-primary/10 transition-all duration-300">
-                                <span className="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform text-on-surface" style={{ fontVariationSettings: "'FILL' 1" }}>credit_card</span>
-                                <span className="text-sm font-semibold text-on-surface">Credit Card</span>
-                            </div>
-                        </label>
-                        <label className="relative cursor-pointer group">
-                            <input type="radio" name="payment_method" className="peer sr-only" />
-                            <div className="glass-card p-6 rounded-xl flex flex-col items-center gap-3 border border-outline-variant/20 peer-checked:border-primary peer-checked:bg-primary/10 transition-all duration-300">
-                                <span className="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform text-on-surface">account_balance</span>
-                                <span className="text-sm font-semibold text-on-surface">bKash</span>
-                            </div>
-                        </label>
-                        <label className="relative cursor-pointer group">
-                            <input type="radio" name="payment_method" className="peer sr-only" />
-                            <div className="glass-card p-6 rounded-xl flex flex-col items-center gap-3 border border-outline-variant/20 peer-checked:border-primary peer-checked:bg-primary/10 transition-all duration-300">
-                                <span className="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform text-on-surface">wallet</span>
-                                <span className="text-sm font-semibold text-on-surface">Nagad</span>
-                            </div>
-                        </label>
-                    </div>
-                </section>
+            <section className="glass-card p-8 rounded-2xl space-y-6 border border-outline-variant/15">
+              <h3 className="text-xl font-bold font-[family-name:var(--font-headline)] text-on-surface">Booking Window</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Date</label>
+                  <input value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} type="date" className="mt-2 w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Check-in</label>
+                  <input value={startTime} onChange={(e) => setStartTime(e.target.value)} type="time" className="mt-2 w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Check-out</label>
+                  <input value={endTime} onChange={(e) => setEndTime(e.target.value)} type="time" className="mt-2 w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface outline-none" />
+                </div>
+              </div>
+            </section>
 
-                {/* Credit Card Form */}
-                <section className="glass-card p-8 rounded-2xl space-y-8 border border-outline-variant/15">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-bold font-[family-name:var(--font-headline)] text-on-surface">Card Information</h3>
-                        <div className="flex gap-2 text-on-surface-variant">
-                            <div className="w-8 h-5 bg-surface-container rounded flex items-center justify-center">
-                                <span className="material-symbols-outlined text-[12px]">credit_card</span>
-                            </div>
-                            <div className="w-8 h-5 bg-surface-container rounded flex items-center justify-center">
-                                <span className="material-symbols-outlined text-[12px]">payments</span>
-                            </div>
-                        </div>
+            <section className="space-y-6">
+              <h3 className="text-xl font-bold font-[family-name:var(--font-headline)] text-on-surface">Select Payment Method</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { id: "card", label: "Credit Card", icon: "credit_card" },
+                  { id: "bkash", label: "bKash", icon: "account_balance" },
+                  { id: "nagad", label: "Nagad", icon: "wallet" },
+                ].map((method) => (
+                  <label key={method.id} className="relative cursor-pointer group">
+                    <input type="radio" name="payment_method" checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} className="peer sr-only" />
+                    <div className="glass-card p-6 rounded-xl flex flex-col items-center gap-3 border border-outline-variant/20 peer-checked:border-primary peer-checked:bg-primary/10 transition-all duration-300">
+                      <span className="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform text-on-surface" style={{ fontVariationSettings: "'FILL' 1" }}>{method.icon}</span>
+                      <span className="text-sm font-semibold text-on-surface">{method.label}</span>
                     </div>
+                  </label>
+                ))}
+              </div>
+            </section>
 
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Cardholder Name</label>
-                            <input type="text" placeholder="ALEXANDER VANGUARD" className="w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-outline font-[family-name:var(--font-headline)] uppercase tracking-tight text-on-surface" />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Card Number</label>
-                            <div className="relative">
-                                <input type="text" placeholder="0000 0000 0000 0000" className="w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-outline font-[family-name:var(--font-headline)] text-on-surface" />
-                                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-primary">lock</span>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Expiry Date</label>
-                                <input type="text" placeholder="MM/YY" className="w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-outline font-[family-name:var(--font-headline)] text-on-surface" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">CVV</label>
-                                <input type="password" placeholder="123" className="w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-outline font-[family-name:var(--font-headline)] text-on-surface" />
-                            </div>
-                        </div>
-                    </div>
+            <section className="glass-card p-8 rounded-2xl space-y-6 border border-outline-variant/15">
+              <h3 className="text-xl font-bold font-[family-name:var(--font-headline)] text-on-surface">Vehicle</h3>
+              {vehicles.length === 0 ? (
+                <p className="text-sm text-on-surface-variant">Add a vehicle in your dashboard before checking out.</p>
+              ) : (
+                <select value={selectedVehicleId} onChange={(e) => setSelectedVehicleId(e.target.value)} className="w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-4 text-on-surface outline-none">
+                  {vehicles.map((vehicle) => (
+                    <option key={vehicle.vehicleId} value={vehicle.vehicleId}>
+                      {vehicle.model || "Vehicle"} • {vehicle.licensePlate || "Unknown plate"}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </section>
+          </div>
 
-                    <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
-                        <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
-                        <p className="text-xs text-on-surface-variant leading-relaxed">Your transaction is protected by 256-bit AES encryption. Ustaad never stores your full card credentials on our servers.</p>
+          <aside className="lg:col-span-5 space-y-8 lg:sticky lg:top-28">
+            <div className="glass-card rounded-3xl overflow-hidden shadow-2xl shadow-primary/5 border border-outline-variant/15">
+              <div className="p-8 space-y-8">
+                <h3 className="text-xl font-bold font-[family-name:var(--font-headline)] text-on-surface">Order Summary</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 relative bg-surface-container-highest border border-outline-variant/20">
+                      <Image src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5MyERuhhUeEWktNH-Nz_0EZM9cgAJaH9-jyAZCdnoACvps8NzvDwpE7VKVswnJqdSFp8qnogAvOFVaH_DkqLvitKWQhTDrtGm849oJwWoEXDFtmu-G5DzJZlEjbyXAeQTTzx94qtZgJNr3_G0W8wjDZCvoGXTjemLjUckJ_akAZAlWCtCKb_a-iprNyHnn4ricoUiTddRkJpu65wmF72dCiBrF7yZVDJBGJRqG-q3CPSndlpd6cIsR7HzZ4-kP4eqmIKFC0A4vfw" alt="Parking" fill className="object-cover" />
                     </div>
-                </section>
+                    <div className="flex-grow min-w-0">
+                      <p className="font-bold text-on-surface truncate">{parkingName}</p>
+                      <p className="text-xs text-on-surface-variant truncate">{parkingLocation}</p>
+                    </div>
+                    <p className="font-bold text-on-surface">{formatBDT(hourlyRate)}</p>
+                  </div>
+
+                  <div className="h-px bg-outline-variant/20"></div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-on-surface-variant">Subtotal</span>
+                      <span className="text-on-surface font-semibold">{formatBDT(subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-on-surface-variant">Service Fee (5%)</span>
+                      <span className="text-on-surface font-semibold">{formatBDT(serviceFee)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-on-surface-variant">Platform Fee (BDT 10/hour)</span>
+                      <span className="text-on-surface font-semibold">{formatBDT(platformFee)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-primary/20">
+                  <div className="flex justify-between items-end mb-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Total Payable</p>
+                      <p className="text-3xl font-black font-[family-name:var(--font-headline)] text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">{formatBDT(total)}</p>
+                    </div>
+                    <span className="material-symbols-outlined text-primary opacity-50 text-5xl animate-pulse">auto_awesome</span>
+                  </div>
+
+                  {error && <p className="mb-4 rounded-xl border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">{error}</p>}
+
+                  <button onClick={handleCheckout} disabled={submitting || !vehicles.length} className="w-full block text-center py-5 bg-gradient-to-r from-primary-fixed to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg rounded-2xl shadow-[0_10px_30px_rgba(163,166,255,0.2)] hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:scale-100">
+                    <span className="flex items-center justify-center gap-3">
+                      <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>encrypted</span>
+                      {submitting ? "Processing..." : `Pay ${formatBDT(total)}`}
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* Right Column: Summary & Promo border */}
-            <aside className="lg:col-span-5 space-y-8 lg:sticky lg:top-28">
-                
-                {/* Order Summary Card */}
-                <div className="glass-card rounded-3xl overflow-hidden shadow-2xl shadow-primary/5 border border-outline-variant/15">
-                    <div className="p-8 space-y-8">
-                        <h3 className="text-xl font-bold font-[family-name:var(--font-headline)] text-on-surface">Order Summary</h3>
-                        
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 relative">
-                                    <Image src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5MyERuhhUeEWktNH-Nz_0EZM9cgAJaH9-jyAZCdnoACvps8NzvDwpE7VKVswnJqdSFp8qnogAvOFVaH_DkqLvitKWQhTDrtGm849oJwWoEXDFtmu-G5DzJZlEjbyXAeQTTzx94qtZgJNr3_G0W8wjDZCvoGXTjemLjUckJ_akAZAlWCtCKb_a-iprNyHnn4ricoUiTddRkJpu65wmF72dCiBrF7yZVDJBGJRqG-q3CPSndlpd6cIsR7HzZ4-kP4eqmIKFC0A4vfw" alt="Premium Suite" fill className="object-cover" />
-                                </div>
-                                <div className="flex-grow">
-                                    <p className="font-bold text-on-surface">Premium Celestial Suite</p>
-                                    <p className="text-xs text-on-surface-variant">Booking #UST-8829</p>
-                                </div>
-                                <p className="font-bold text-on-surface">$2,450</p>
-                            </div>
-
-                            <div className="h-px bg-outline-variant/20"></div>
-
-                            <div className="space-y-3">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-on-surface-variant">Subtotal</span>
-                                    <span className="text-on-surface font-semibold">$2,450.00</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-on-surface-variant">Service Tax (5%)</span>
-                                    <span className="text-on-surface font-semibold">$122.50</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-on-surface-variant">Ustaad Fee</span>
-                                    <span className="text-on-surface font-semibold">$15.00</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Promo Code */}
-                        <div className="space-y-2 mt-8">
-                            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Promo Code</label>
-                            <div className="flex gap-2">
-                                <input type="text" placeholder="ENTER CODE" className="flex-grow bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-outline font-[family-name:var(--font-headline)] uppercase text-sm text-on-surface" />
-                                <button className="px-6 py-3 bg-surface-container-high rounded-xl text-xs font-bold uppercase tracking-wider text-on-surface hover:bg-surface-variant transition-colors border border-outline-variant/20">Apply</button>
-                            </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-primary/20">
-                            <div className="flex justify-between items-end mb-8">
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Total Payable</p>
-                                    <p className="text-3xl font-black font-[family-name:var(--font-headline)] text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">$2,587.50</p>
-                                </div>
-                                <span className="material-symbols-outlined text-primary opacity-50 text-5xl animate-pulse">auto_awesome</span>
-                            </div>
-                            <Link href="/booking-confirmation" className="w-full block text-center py-5 bg-gradient-to-r from-primary-fixed to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg rounded-2xl shadow-[0_10px_30px_rgba(163,166,255,0.2)] hover:scale-105 active:scale-95 transition-all">
-                                <span className="flex items-center justify-center gap-3">
-                                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>encrypted</span>
-                                    Pay $2,587.50
-                                </span>
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Trust Badge */}
-                <div className="flex items-center justify-center gap-8 opacity-40 grayscale hover:grayscale-0 transition-all duration-500 text-on-surface">
-                    <span className="material-symbols-outlined text-4xl">verified</span>
-                    <span className="material-symbols-outlined text-4xl">shield_with_heart</span>
-                    <span className="material-symbols-outlined text-4xl">security</span>
-                </div>
-
-            </aside>
+            <div className="flex items-center justify-center gap-8 opacity-40 grayscale hover:grayscale-0 transition-all duration-500 text-on-surface">
+              <span className="material-symbols-outlined text-4xl">verified</span>
+              <span className="material-symbols-outlined text-4xl">shield_with_heart</span>
+              <span className="material-symbols-outlined text-4xl">security</span>
+            </div>
+          </aside>
         </div>
       </main>
 
       <footer className="py-12 px-6 border-t border-outline-variant/10 mt-auto bg-surface-container-lowest">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                <Link href="/terms-conditions" className="hover:text-primary transition-colors">Privacy Policy</Link>
-                <Link href="/terms-conditions" className="hover:text-primary transition-colors">Terms of Service</Link>
-                <Link href="#" className="hover:text-primary transition-colors">Refund Policy</Link>
-            </div>
-            <p className="text-xs text-on-surface-variant font-medium">© 2024 Ustaad Technologies. All Rights Reserved.</p>
+          <div className="flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+            <Link href="/terms-conditions" className="hover:text-primary transition-colors">Privacy Policy</Link>
+            <Link href="/terms-conditions" className="hover:text-primary transition-colors">Terms of Service</Link>
+            <Link href="#" className="hover:text-primary transition-colors">Refund Policy</Link>
+          </div>
+          <p className="text-xs text-on-surface-variant font-medium">© 2024 Ustaad Technologies. All Rights Reserved.</p>
         </div>
       </footer>
     </div>

@@ -82,7 +82,7 @@ export default function SendQuotePage() {
                         <div className="space-y-3">
                             <label className="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest ml-1 font-[family-name:var(--font-label)]">General Service Price</label>
                             <div className="relative group">
-                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-primary font-bold text-xl">৳</span>
+                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-primary font-bold text-xl">BDT</span>
                                 <input className="w-full bg-surface-container-highest/80 border border-outline-variant/20 rounded-2xl py-5 pl-12 pr-6 text-xl font-bold text-on-surface focus:outline-none focus:border-primary transition-all focus:ring-4 focus:ring-primary/10 font-[family-name:var(--font-headline)] hover:border-outline-variant/50" placeholder="1200" type="number" defaultValue="1200" />
                             </div>
                             <p className="text-xs text-on-surface-variant ml-1 font-[family-name:var(--font-body)] italic">Standard repair during business hours</p>
@@ -92,7 +92,7 @@ export default function SendQuotePage() {
                         <div className="space-y-3">
                             <label className="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest ml-1 font-[family-name:var(--font-label)]">Emergency Service Price</label>
                             <div className="relative group">
-                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-secondary font-bold text-xl">৳</span>
+                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-secondary font-bold text-xl">BDT</span>
                                 <input className="w-full bg-surface-container-highest/80 border border-outline-variant/20 rounded-2xl py-5 pl-12 pr-6 text-xl font-bold text-on-surface focus:outline-none focus:border-secondary transition-all focus:ring-4 focus:ring-secondary/10 font-[family-name:var(--font-headline)] hover:border-outline-variant/50" placeholder="1800" type="number" defaultValue="1800" />
                             </div>
                             <p className="text-xs text-on-surface-variant ml-1 font-[family-name:var(--font-body)] italic text-secondary-dim/70">24/7 priority on-site assistance</p>

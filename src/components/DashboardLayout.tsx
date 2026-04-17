@@ -50,6 +50,8 @@ export default function DashboardLayout({
 
   if (!user) return null;
 
+  const homeHref = requiredRole === "car_owner" ? "/search-parking" : "/dashboard/garage-owner";
+
   const handleLogout = () => {
     logout();
     router.push("/");
@@ -62,7 +64,7 @@ export default function DashboardLayout({
         {/* Logo - HOME BUTTON */}
         <div className="mb-8">
           <Link 
-            href="/"
+            href={homeHref}
             className="flex items-center gap-2 group hover:opacity-80 transition-opacity"
           >
             <span className="text-3xl font-bold text-primary font-[family-name:var(--font-headline)] group-hover:scale-110 transition-transform">
@@ -76,7 +78,7 @@ export default function DashboardLayout({
 
         {/* HOME Button */}
         <Link
-          href="/"
+          href={homeHref}
           className="w-full mb-6 px-4 py-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors flex items-center justify-center gap-2 group"
         >
           <span className="material-symbols-outlined group-hover:text-primary">home</span>
@@ -91,6 +93,8 @@ export default function DashboardLayout({
           {requiredRole === "car_owner" ? (
             <>
               <NavLink href="/dashboard/car-owner" label="Dashboard" icon="dashboard" />
+              <NavLink href="/search-parking" label="Find Parking" icon="local_parking" />
+              <NavLink href="/request-service" label="Services" icon="build" />
               <NavLink href="/dashboard/car-owner/my-bookings" label="My Bookings" icon="calendar_today" />
               <NavLink href="/dashboard/car-owner/my-vehicles" label="My Vehicles" icon="directions_car" />
               <NavLink href="/dashboard/car-owner/payment-history" label="Payments" icon="credit_card" />

@@ -1,205 +1,275 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import DashboardNavbar from "@/components/DashboardNavbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import SettingsSidebar from "@/components/SettingsSidebar";
-import Image from "next/image";
-
-export const metadata = { title: "User Profile | Ustaad" };
+import {
+  getLoggedInUser,
+  persistLoggedInUser,
+  type LoggedInUser,
+} from "@/lib/auth";
 
 export default function UserProfilePage() {
+  const router = useRouter();
+  const [user, setUser] = useState<LoggedInUser | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loggedUser = getLoggedInUser();
+    if (!loggedUser) {
+      router.replace("/login");
+      return;
+    }
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    setUser(loggedUser);
+
+    const loadProfile = async () => {
+      try {
+        const response = await fetch("/api/dashboard/car-owner/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          user?: { name?: string; email?: string; phone?: string; role?: LoggedInUser["role"]; id?: string };
+        };
+
+        if (response.ok && payload.user) {
+          const nextUser: LoggedInUser = {
+            id: payload.user.id || loggedUser.id,
+            name: payload.user.name || loggedUser.name,
+            email: payload.user.email || loggedUser.email,
+            role: payload.user.role || loggedUser.role,
+          };
+
+          setUser(nextUser);
+          persistLoggedInUser(nextUser);
+          setProfileName(nextUser.name);
+          setProfileEmail(nextUser.email);
+          setProfilePhone(payload.user.phone || "");
+          return;
+        }
+      } catch {
+        // Keep local fallback values below.
+      }
+
+      setProfileName(loggedUser.name);
+      setProfileEmail(loggedUser.email);
+      setProfilePhone("");
+    };
+
+    loadProfile();
+  }, [router]);
+
+  const handleProfileUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      setError("Please login again.");
+      router.replace("/login");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const response = await fetch("/api/dashboard/car-owner/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: profileName,
+          email: profileEmail,
+          phone: profilePhone,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        user?: { id: string; name: string; email: string; role: LoggedInUser["role"]; phone?: string };
+      };
+
+      if (!response.ok || !payload.user) {
+        throw new Error(payload.error || "Failed to update profile");
+      }
+
+      const nextUser: LoggedInUser = {
+        id: payload.user.id,
+        name: payload.user.name,
+        email: payload.user.email,
+        role: payload.user.role,
+      };
+
+      setUser(nextUser);
+      persistLoggedInUser(nextUser);
+      setProfilePhone(payload.user.phone || "");
+      setMessage(payload.message || "Profile updated successfully.");
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface text-on-surface">
+        <span className="material-symbols-outlined text-4xl animate-spin text-primary">hourglass_bottom</span>
+      </div>
+    );
+  }
+
+  const roleLabel =
+    user.role === "car_owner"
+      ? "Car Owner"
+      : user.role === "garage_owner"
+      ? "Garage Owner"
+      : "Admin";
+
+  const paymentHint = user.role === "garage_owner" ? "Use this method for payouts and fee settlements." : "Use this method for bookings and subscriptions.";
+  const canEditProfile = user.role === "car_owner";
+
   return (
     <div className="min-h-screen flex flex-col bg-surface text-on-surface overflow-x-hidden selection:bg-primary/30">
       <NebulaBackground />
       <DashboardNavbar />
       <SettingsSidebar activePath="/user-profile" />
 
-      <main className="flex-1 lg:ml-64 pt-32 pb-24 px-6 md:px-12 max-w-6xl mx-auto w-full relative z-10">
-        
-        {/* Profile Header Section */}
-        <section className="relative flex flex-col md:flex-row items-center md:items-end gap-8 pb-12">
-          <div className="relative group">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden shadow-[0_10px_40px_rgba(163,166,255,0.2)] rotate-3 transition-transform hover:rotate-0 duration-500 border border-outline-variant/20">
-              <Image 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCP3DhAjH7MyLcewK3llKX7zgok8QUX7K0698QPUfECmMf3NUg05o-miX22bV-OEY6NScCKMSS_VN73f3a_hhKk4U2hnWiw1TxhdE-3N13xLn_GY2cM5POPyc7L3z9P7WabpDiC7ZTJzxVmuK9B1VY7DchEFgdmI1pAdJvoRnTFVYUqTf3cD5l9JZs37tWMzUR6SPj0Pa0U3mu7igDQEcl3IY0YIp5mZ1dGdsKcthooJCRbisDhi6BAYgaZ2gl1bY94WtBEjpmqBW0" 
-                alt="Profile Avatar" 
-                fill 
-                className="object-cover"
-              />
+      <main className="flex-1 lg:ml-64 pt-32 pb-24 px-6 md:px-12 max-w-5xl mx-auto w-full relative z-10">
+        <section className="glass-card rounded-3xl p-8 border border-outline-variant/15 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-[family-name:var(--font-headline)] font-extrabold tracking-tight text-on-surface">
+                {user.name}
+              </h1>
+              <p className="text-sm uppercase tracking-[0.15em] text-on-surface-variant mt-1">{roleLabel}</p>
             </div>
-            <div className="absolute -bottom-4 -right-4 bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-full font-[family-name:var(--font-headline)] font-bold text-xs uppercase tracking-widest shadow-lg border border-secondary/20 whitespace-nowrap">
-              Elite Member
+            <div className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-lg border border-primary/30">
+              {user.name.charAt(0).toUpperCase()}
             </div>
-          </div>
-          
-          <div className="text-center md:text-left flex-1 mt-6 md:mt-0">
-            <h1 className="text-4xl md:text-5xl font-[family-name:var(--font-headline)] font-extrabold tracking-tighter mb-2 text-on-surface">Aria Thorne</h1>
-            <p className="text-on-surface-variant flex items-center justify-center md:justify-start gap-2 font-[family-name:var(--font-body)]">
-              <span className="material-symbols-outlined text-primary text-sm">location_on</span>
-              San Francisco, California
-            </p>
-          </div>
-          
-          <div className="flex gap-3 mt-6 md:mt-0">
-            <button className="bg-primary-container text-on-primary-container font-[family-name:var(--font-headline)] font-bold px-6 py-3 rounded-xl hover:bg-primary hover:text-on-primary transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-primary/20 border border-primary/20">
-              <span className="material-symbols-outlined text-[20px]">edit</span>
-              Edit Profile
-            </button>
           </div>
         </section>
 
-        {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          
-          {/* Personal Info Card */}
-          <div className="md:col-span-8 glass-card rounded-3xl p-8 border border-outline-variant/15">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-[family-name:var(--font-headline)] font-bold flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary">person</span>
-                Personal Information
-              </h3>
+        <section className="glass-card rounded-3xl p-8 border border-outline-variant/15 mb-6">
+          <h2 className="text-xl font-[family-name:var(--font-headline)] font-bold mb-6">Profile Information</h2>
+          {canEditProfile ? (
+            <form onSubmit={handleProfileUpdate} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-outline font-bold">Name</p>
+                  <input
+                    value={profileName}
+                    onChange={(event) => setProfileName(event.target.value)}
+                    className="mt-2 w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface"
+                    placeholder="Full name"
+                    required
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-outline font-bold">Email</p>
+                  <input
+                    value={profileEmail}
+                    onChange={(event) => setProfileEmail(event.target.value)}
+                    type="email"
+                    className="mt-2 w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface"
+                    placeholder="you@example.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-outline font-bold">Phone</p>
+                  <input
+                    value={profilePhone}
+                    onChange={(event) => setProfilePhone(event.target.value)}
+                    className="mt-2 w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface"
+                    placeholder="+8801XXXXXXXXX"
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-outline font-bold">Role</p>
+                  <p className="text-lg font-medium text-on-surface mt-3">{roleLabel}</p>
+                </div>
+              </div>
+
+              {message && <p className="text-sm text-green-400">{message}</p>}
+              {error && <p className="text-sm text-red-400">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-3 rounded-xl bg-primary text-on-primary-fixed font-bold disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Save Profile"}
+              </button>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-outline font-bold">Name</p>
+                <p className="text-lg font-medium text-on-surface mt-1">{user.name}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-outline font-bold">Email</p>
+                <p className="text-lg font-medium text-on-surface mt-1">{user.email}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-outline font-bold">Phone</p>
+                <p className="text-lg font-medium text-on-surface mt-1">{profilePhone || "Not added yet"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-outline font-bold">Role</p>
+                <p className="text-lg font-medium text-on-surface mt-1">{roleLabel}</p>
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-12 font-[family-name:var(--font-body)]">
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest text-outline font-bold font-[family-name:var(--font-label)]">Full Name</label>
-                <p className="text-lg font-medium text-on-surface">Aria Thorne</p>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest text-outline font-bold font-[family-name:var(--font-label)]">Email Address</label>
-                <p className="text-lg font-medium text-on-surface">aria.thorne@celestial.io</p>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest text-outline font-bold font-[family-name:var(--font-label)]">Phone Number</label>
-                <p className="text-lg font-medium text-on-surface">+1 (555) 012-3456</p>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest text-outline font-bold font-[family-name:var(--font-label)]">Mailing Address</label>
-                <p className="text-lg font-medium text-on-surface">42 Nebula Lane, Suite 9</p>
-              </div>
-            </div>
+          )}
+        </section>
+
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="glass-card rounded-3xl p-8 border border-outline-variant/15">
+            <h3 className="text-lg font-[family-name:var(--font-headline)] font-bold mb-3">Subscription</h3>
+            <p className="text-sm text-on-surface-variant mb-6">View and choose a plan that matches your usage.</p>
+            <Link
+              href="/subscription-plans"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary-fixed font-bold text-sm"
+            >
+              Manage Subscription
+              <span className="material-symbols-outlined text-base">arrow_forward</span>
+            </Link>
           </div>
 
-          {/* Verification Status */}
-          <div className="md:col-span-4 glass-card rounded-3xl p-8 border border-outline-variant/15">
-            <h3 className="text-xl font-[family-name:var(--font-headline)] font-bold flex items-center gap-3 mb-8">
-              <span className="material-symbols-outlined text-tertiary">verified_user</span>
-              Trust Score
-            </h3>
-            <div className="space-y-4 font-[family-name:var(--font-body)]">
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-surface-container-low border border-outline-variant/10 shadow-inner">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary text-xl">mark_email_read</span>
-                  <span className="text-sm font-medium">Email Verified</span>
-                </div>
-                <span className="material-symbols-outlined text-success" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-surface-container-low border border-outline-variant/10 shadow-inner">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary text-xl">phone_iphone</span>
-                  <span className="text-sm font-medium">Phone Secured</span>
-                </div>
-                <span className="material-symbols-outlined text-success" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-surface-container-low border border-outline-variant/10 shadow-inner border-l-2 border-l-tertiary">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-tertiary text-xl">badge</span>
-                  <span className="text-sm font-medium">Identity Check</span>
-                </div>
-                <button className="text-xs font-bold text-tertiary hover:underline uppercase tracking-tighter">Verify</button>
-              </div>
-            </div>
+          <div id="payment-methods" className="glass-card rounded-3xl p-8 border border-outline-variant/15 scroll-mt-28">
+            <h3 className="text-lg font-[family-name:var(--font-headline)] font-bold mb-3">Payment Methods</h3>
+            <p className="text-sm text-on-surface-variant mb-6">{paymentHint}</p>
+            <Link
+              href="/checkout?returnTo=/user-profile"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-secondary/15 text-secondary border border-secondary/30 font-bold text-sm"
+            >
+              Add Payment Method
+              <span className="material-symbols-outlined text-base">credit_card</span>
+            </Link>
           </div>
-
-          {/* Subscription Details Card */}
-          <div className="md:col-span-5 glass-card rounded-3xl p-8 relative overflow-hidden border border-outline-variant/15 shadow-[0_4px_30px_rgba(0,0,0,0.3)] group cursor-pointer">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full -mr-8 -mt-8 blur-2xl group-hover:bg-primary/20 transition-colors"></div>
-            <h3 className="text-xl font-[family-name:var(--font-headline)] font-bold flex items-center gap-3 mb-8 relative z-10">
-              <span className="material-symbols-outlined text-secondary">card_membership</span>
-              Active Plan
-            </h3>
-            <div className="space-y-6 relative z-10 font-[family-name:var(--font-body)]">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl md:text-4xl font-[family-name:var(--font-headline)] font-black text-primary">Celestial</span>
-                <span className="text-on-surface-variant font-medium">/ Yearly</span>
-              </div>
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-on-surface-variant">Valid Until</span>
-                  <span className="font-bold">December 14, 2025</span>
-                </div>
-                <div className="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden shadow-inner border border-outline-variant/10">
-                  <div className="bg-primary h-full w-[75%] shadow-[0_0_10px_rgba(163,166,255,0.5)]"></div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-secondary text-sm">sync</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-outline font-[family-name:var(--font-label)]">Auto-renewal On</span>
-                </div>
-                <button className="text-on-surface hover:text-primary text-xs font-bold transition-colors uppercase tracking-wider">Manage</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Booking History */}
-          <div className="md:col-span-7 glass-card rounded-3xl p-8 border border-outline-variant/15">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-[family-name:var(--font-headline)] font-bold flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary">history</span>
-                Recent Activity
-              </h3>
-              <button className="text-primary hover:text-primary-dim text-sm font-bold uppercase tracking-widest text-[10px] transition-colors">View All</button>
-            </div>
-            
-            <div className="space-y-4 font-[family-name:var(--font-body)]">
-              {/* History Item */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low group hover:bg-surface-container-high transition-colors border border-outline-variant/5">
-                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                  <span className="material-symbols-outlined">local_parking</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-sm text-on-surface truncate">Downtown Secure Parking</h4>
-                  <p className="text-xs text-on-surface-variant truncate">Confirmed • 2 hours ago</p>
-                </div>
-                <div className="text-right flex-shrink-0 flex items-center gap-3">
-                  <p className="font-[family-name:var(--font-headline)] font-bold text-on-surface">$12.50</p>
-                  <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-sm translate-x-1 group-hover:translate-x-0">arrow_forward_ios</span>
-                </div>
-              </div>
-
-              {/* History Item */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low group hover:bg-surface-container-high transition-colors border border-outline-variant/5">
-                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20 shadow-inner">
-                  <span className="material-symbols-outlined">cleaning_services</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-sm text-on-surface truncate">Premium Interior Valet</h4>
-                  <p className="text-xs text-on-surface-variant truncate">Completed • Oct 24, 2024</p>
-                </div>
-                <div className="text-right flex-shrink-0 flex items-center gap-3">
-                  <p className="font-[family-name:var(--font-headline)] font-bold text-on-surface">$85.00</p>
-                  <span className="material-symbols-outlined text-outline group-hover:text-secondary transition-colors text-sm translate-x-1 group-hover:translate-x-0">arrow_forward_ios</span>
-                </div>
-              </div>
-
-              {/* History Item */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low group hover:bg-surface-container-high transition-colors border border-outline-variant/5">
-                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary border border-tertiary/20 shadow-inner">
-                  <span className="material-symbols-outlined">ev_station</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-sm text-on-surface truncate">Hyper-Charge Session</h4>
-                  <p className="text-xs text-on-surface-variant truncate">Completed • Oct 21, 2024</p>
-                </div>
-                <div className="text-right flex-shrink-0 flex items-center gap-3">
-                  <p className="font-[family-name:var(--font-headline)] font-bold text-on-surface">$18.20</p>
-                  <span className="material-symbols-outlined text-outline group-hover:text-tertiary transition-colors text-sm translate-x-1 group-hover:translate-x-0">arrow_forward_ios</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
+        </section>
       </main>
 
       <div className="lg:ml-64 relative z-20"><Footer /></div>

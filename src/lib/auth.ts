@@ -76,6 +76,17 @@ export function isAdmin(): boolean {
 
 export function logout(): void {
   if (typeof window === "undefined") return;
+
+  // Clear localStorage
   localStorage.removeItem("loggedInUser");
   localStorage.removeItem("ustaad_logged_in");
+
+  localStorage.removeItem("token");
+
+  // Clear cookies
+  document.cookie = "auth_token=; path=/; max-age=0";
+
+  // Redirect to login
+  window.location.href = "/login";
 }
+
