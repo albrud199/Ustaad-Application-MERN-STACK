@@ -13,7 +13,7 @@ export default function RequestServicePage() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number; address: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [serviceType, setServiceType] = useState("repair");
+  const [serviceType, setServiceType] = useState("general");
   const [problemDescription, setProblemDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -175,7 +175,7 @@ export default function RequestServicePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* General Service Card */}
                         <label className="relative group cursor-pointer">
-                            <input type="radio" name="service_type" value="repair" checked={serviceType === "repair"} onChange={() => setServiceType("repair")} className="peer sr-only" />
+                            <input type="radio" name="service_type" value="general" checked={serviceType === "general"} onChange={() => setServiceType("general")} className="peer sr-only" />
                             <div className="h-full p-8 rounded-2xl bg-surface-container-low border border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/10 transition-all duration-300">
                                 <div className="w-14 h-14 rounded-xl bg-surface-container-highest flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                                     <span className="material-symbols-outlined text-primary text-3xl">build</span>
@@ -190,7 +190,7 @@ export default function RequestServicePage() {
 
                         {/* Emergency Service Card */}
                         <label className="relative group cursor-pointer">
-                            <input type="radio" name="service_type" value="maintenance" checked={serviceType === "maintenance"} onChange={() => setServiceType("maintenance")} className="peer sr-only" />
+                            <input type="radio" name="service_type" value="emergency" checked={serviceType === "emergency"} onChange={() => setServiceType("emergency")} className="peer sr-only" />
                             <div className="h-full p-8 rounded-2xl bg-surface-container-low border border-outline-variant/30 peer-checked:border-error peer-checked:bg-error/10 transition-all duration-300">
                                 <div className="w-14 h-14 rounded-xl bg-surface-container-highest flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                                     <span className="material-symbols-outlined text-error text-3xl">emergency</span>

@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role
-    const validRoles = ["car_owner", "garage_owner"];
+    const validRoles = ["car_owner", "garage_owner", "repairshop_owner"];
     if (!validRoles.includes(role)) {
       return NextResponse.json(
-        { error: "Invalid role. Must be 'car_owner' or 'garage_owner'" },
+        { error: "Invalid role. Must be 'car_owner', 'garage_owner', or 'repairshop_owner'" },
         { status: 400 }
       );
     }

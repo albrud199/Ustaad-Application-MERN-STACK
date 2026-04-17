@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: { 
       type: String, 
-      enum: ["car_owner", "garage_owner", "admin"], 
+      enum: ["car_owner", "garage_owner", "repairshop_owner", "admin"], 
       required: true 
     },
     status: {
@@ -74,6 +74,10 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Prevent duplicate model creation
-const User = mongoose.models.User || mongoose.model("User", userSchema);
+// Refresh the compiled model in development so enum/schema changes take effect without a restart.
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+
+const User = mongoose.model("User", userSchema);
 export default User;

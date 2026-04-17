@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { dbConnect } from "@/lib/mongoose";
 import User from "@/models/User";
+import Repairshop from "@/models/Repairshop";
 
 type RegistrationData = {
   firstName: string;
@@ -10,7 +11,7 @@ type RegistrationData = {
   email: string;
   phone: string;
   password: string;
-  role: "car_owner" | "garage_owner";
+  role: "car_owner" | "garage_owner" | "repairshop_owner";
   nidNumber: string;
 };
 
@@ -92,6 +93,27 @@ export async function POST(request: NextRequest) {
         selfieImage,
       },
     });
+
+    if (userData.role === "repairshop_owner") {
+      await Repairshop.create({
+        ownerId: createdUser._id,
+        name: `${createdUser.name} Repair Shop`,
+        location: "",
+        city: "",
+        latitude: 0,
+        longitude: 0,
+        services: ["general", "emergency", "repair", "maintenance"],
+        emergencyAvailable: true,
+        status: "active",
+        responseTimeMinutes: 30,
+        phone: createdUser.phone || "",
+        email: createdUser.email,
+        operatingHours: {
+          open: "08:00",
+          close: "20:00",
+        },
+      });
+    }
 
     const user = {
       id: String(createdUser._id),

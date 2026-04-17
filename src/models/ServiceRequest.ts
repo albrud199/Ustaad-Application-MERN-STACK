@@ -9,10 +9,11 @@ const serviceRequestSchema = new mongoose.Schema(
       required: true 
     },
     
-    serviceType: {
+    serviceType: { type: String, required: true },
+    serviceMode: {
       type: String,
-      enum: ["repair", "maintenance", "inspection", "cleaning"],
-      required: true,
+      enum: ["general", "emergency"],
+      default: "general",
     },
     
     problemDescription: { type: String, required: true },
@@ -38,7 +39,11 @@ const serviceRequestSchema = new mongoose.Schema(
     },
     
     assignedGarageId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    assignedRepairshopId: { type: mongoose.Schema.Types.ObjectId, ref: "Repairshop" },
+    assignedRepairshopOwnerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     assignedAt: Date,
+
+    conversationId: { type: mongoose.Schema.Types.ObjectId, ref: "Conversation" },
     
     estimatedCost: Number,
     actualCost: Number,
