@@ -1,8 +1,11 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getLoggedInUser } from "@/lib/auth";
 
 const carOwnerNavLinks = [
+  { href: "/search-parking", label: "Parking", icon: "local_parking" },
+  { href: "/request-service", label: "Services", icon: "build" },
   { href: "/dashboard/car-owner", label: "Dashboard", icon: "dashboard" },
   { href: "/dashboard/car-owner/my-bookings", label: "My Bookings", icon: "event" },
   { href: "/dashboard/car-owner/my-vehicles", label: "My Vehicles", icon: "directions_car" },
@@ -17,17 +20,35 @@ const garageOwnerNavLinks = [
   { href: "/dashboard/garage-owner/settings", label: "Settings", icon: "settings" },
 ];
 
-export default function DashboardNavbar({ userType = "car-owner" }: { userType?: "car-owner" | "garage-owner" }) {
+export default function DashboardNavbar({ userType }: { userType?: "car-owner" | "garage-owner" }) {
   const pathname = usePathname();
-  const navLinks = userType === "garage-owner" ? garageOwnerNavLinks : carOwnerNavLinks;
+  const user = getLoggedInUser();
+  const resolvedUserType =
+    userType ?? (user?.role === "garage_owner" ? "garage-owner" : "car-owner");
+  const navLinks = resolvedUserType === "garage-owner" ? garageOwnerNavLinks : carOwnerNavLinks;
+  const homeHref =
+    user?.role === "car_owner"
+      ? "/search-parking"
+      : user?.role === "garage_owner"
+      ? "/dashboard/garage-owner"
+      : user?.role === "admin"
+      ? "/admin"
+      : "/";
+
+  const profileHref =
+    user?.role === "garage_owner"
+      ? "/dashboard/garage-owner/settings"
+      : user?.role === "admin"
+      ? "/admin/settings"
+      : "/user-profile";
 
   return (
     <header className="fixed top-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-xl">
-      <div className="fixed right-4 top-4 z-50 text-xs text-on-surface-variant">{userType}</div>
+      <div className="fixed right-4 top-4 z-50 text-xs text-on-surface-variant">{resolvedUserType}</div>
       <div className="flex justify-between items-center px-8 py-4 max-w-[1440px] mx-auto">
         <div className="flex items-center gap-12">
           <Link
-            href="/"
+            href={homeHref}
             className="text-2xl font-bold tracking-tighter text-primary font-[family-name:var(--font-headline)]"
           >
             Ustaad
@@ -57,15 +78,24 @@ export default function DashboardNavbar({ userType = "car-owner" }: { userType?:
               type="text"
             />
           </div>
-          <button className="p-2 text-gray-400 hover:bg-primary/10 rounded-lg transition-all active:scale-95 duration-200">
+          <Link
+            href="/notification-settings"
+            className="p-2 text-gray-400 hover:bg-primary/10 rounded-lg transition-all active:scale-95 duration-200"
+          >
             <span className="material-symbols-outlined">notifications</span>
-          </button>
-          <button className="p-2 text-gray-400 hover:bg-primary/10 rounded-lg transition-all active:scale-95 duration-200">
+          </Link>
+          <Link
+            href="/security-password"
+            className="p-2 text-gray-400 hover:bg-primary/10 rounded-lg transition-all active:scale-95 duration-200"
+          >
             <span className="material-symbols-outlined">settings</span>
-          </button>
-          <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-primary/20 bg-surface-container-highest flex items-center justify-center">
+          </Link>
+          <Link
+            href={profileHref}
+            className="h-10 w-10 rounded-full overflow-hidden border-2 border-primary/20 bg-surface-container-highest flex items-center justify-center"
+          >
             <span className="material-symbols-outlined text-primary">person</span>
-          </div>
+          </Link>
         </div>
       </div>
       <div className="bg-gradient-to-r from-transparent via-primary-dim/10 to-transparent h-px w-full absolute bottom-0" />

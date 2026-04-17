@@ -1,10 +1,17 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardNavbar from "@/components/DashboardNavbar";
 import Footer from "@/components/Footer";
 import SettingsSidebar from "@/components/SettingsSidebar";
 
-export const metadata = { title: "Subscription Plans | Ustaad" };
-
 export default function SubscriptionPlansPage() {
+  const router = useRouter();
+  const [selectedPlan, setSelectedPlan] = useState<string>("Monthly");
+
+  const isSelected = (plan: string) => selectedPlan === plan;
+
   return (
     <div className="min-h-screen flex flex-col bg-surface text-on-surface overflow-x-hidden selection:bg-primary/30">
       {/* Background Nebula Orbs */}
@@ -28,10 +35,10 @@ export default function SubscriptionPlansPage() {
         </div>
 
         {/* Bento Pricing Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end font-[family-name:var(--font-body)]">
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-2 font-[family-name:var(--font-body)]">
           
           {/* Hourly Plan */}
-          <div className="glass-card p-8 rounded-[32px] border border-outline-variant/15 flex flex-col h-full hover:border-primary/40 transition-all duration-300">
+          <div className="glass-card min-w-[280px] md:min-w-0 snap-start p-8 rounded-[32px] border border-outline-variant/15 flex flex-col h-full hover:border-primary/40 transition-all duration-300">
             <div className="mb-8">
               <span className="text-xs font-bold tracking-widest text-outline uppercase font-[family-name:var(--font-label)]">Commuter</span>
               <h3 className="text-2xl font-bold font-[family-name:var(--font-headline)] mt-2">Hourly</h3>
@@ -50,13 +57,20 @@ export default function SubscriptionPlansPage() {
                 Instant Validation
               </li>
             </ul>
-            <button className="w-full py-4 rounded-xl bg-surface-container-highest text-on-surface font-bold hover:bg-surface-variant active:scale-95 transition-all border border-outline-variant/20 font-[family-name:var(--font-headline)]">
-              Select
+            <button
+              onClick={() => setSelectedPlan("Hourly")}
+              className={`w-full py-4 rounded-xl font-bold active:scale-95 transition-all border font-[family-name:var(--font-headline)] ${
+                isSelected("Hourly")
+                  ? "bg-primary text-on-primary-fixed border-primary"
+                  : "bg-surface-container-highest text-on-surface hover:bg-surface-variant border-outline-variant/20"
+              }`}
+            >
+              {isSelected("Hourly") ? "Selected" : "Select"}
             </button>
           </div>
 
           {/* Daily Plan */}
-          <div className="glass-card p-8 rounded-[32px] border border-outline-variant/15 flex flex-col h-full hover:border-primary/40 transition-all duration-300">
+          <div className="glass-card min-w-[280px] md:min-w-0 snap-start p-8 rounded-[32px] border border-outline-variant/15 flex flex-col h-full hover:border-primary/40 transition-all duration-300">
             <div className="mb-8">
               <span className="text-xs font-bold tracking-widest text-outline uppercase font-[family-name:var(--font-label)]">Explorer</span>
               <h3 className="text-2xl font-bold font-[family-name:var(--font-headline)] mt-2">Daily</h3>
@@ -75,13 +89,20 @@ export default function SubscriptionPlansPage() {
                 Free Valet
               </li>
             </ul>
-            <button className="w-full py-4 rounded-xl bg-surface-container-highest text-on-surface font-bold hover:bg-surface-variant active:scale-95 transition-all border border-outline-variant/20 font-[family-name:var(--font-headline)]">
-              Select
+            <button
+              onClick={() => setSelectedPlan("Daily")}
+              className={`w-full py-4 rounded-xl font-bold active:scale-95 transition-all border font-[family-name:var(--font-headline)] ${
+                isSelected("Daily")
+                  ? "bg-primary text-on-primary-fixed border-primary"
+                  : "bg-surface-container-highest text-on-surface hover:bg-surface-variant border-outline-variant/20"
+              }`}
+            >
+              {isSelected("Daily") ? "Selected" : "Select"}
             </button>
           </div>
 
           {/* Monthly Plan (Highlighted) */}
-          <div className="relative glass-card p-8 rounded-[32px] border-2 border-primary/60 flex flex-col h-full md:scale-105 z-10 bg-surface-container-low/80 shadow-[0_0_40px_rgba(163,166,255,0.15)]">
+          <div className="relative glass-card min-w-[280px] md:min-w-0 snap-start p-8 rounded-[32px] border-2 border-primary/60 flex flex-col h-full md:scale-105 z-10 bg-surface-container-low/80 shadow-[0_0_40px_rgba(163,166,255,0.15)]">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-secondary px-4 py-1 rounded-full shadow-[0_4px_10px_rgba(163,166,255,0.4)]">
               <span className="text-[10px] font-black uppercase tracking-tighter text-white font-[family-name:var(--font-label)]">Most Popular</span>
             </div>
@@ -114,13 +135,20 @@ export default function SubscriptionPlansPage() {
                 Flash Entry Access
               </li>
             </ul>
-            <button className="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 font-[family-name:var(--font-label)]">
-              Upgrade Now
+            <button
+              onClick={() => setSelectedPlan("Monthly")}
+              className={`w-full py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg font-[family-name:var(--font-label)] ${
+                isSelected("Monthly")
+                  ? "bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed shadow-primary/20"
+                  : "bg-surface-container-highest text-on-surface border border-outline-variant/20"
+              }`}
+            >
+              {isSelected("Monthly") ? "Selected" : "Upgrade Now"}
             </button>
           </div>
 
           {/* Weekly Plan */}
-          <div className="glass-card p-8 rounded-[32px] border border-outline-variant/15 flex flex-col h-full hover:border-primary/40 transition-all duration-300">
+          <div className="glass-card min-w-[280px] md:min-w-0 snap-start p-8 rounded-[32px] border border-outline-variant/15 flex flex-col h-full hover:border-primary/40 transition-all duration-300">
             <div className="mb-8">
               <span className="text-xs font-bold tracking-widest text-outline uppercase font-[family-name:var(--font-label)]">Voyager</span>
               <h3 className="text-2xl font-bold font-[family-name:var(--font-headline)] mt-2">Weekly</h3>
@@ -139,11 +167,30 @@ export default function SubscriptionPlansPage() {
                 Guest Passes (2)
               </li>
             </ul>
-            <button className="w-full py-4 rounded-xl bg-surface-container-highest text-on-surface font-bold hover:bg-surface-variant active:scale-95 transition-all border border-outline-variant/20 font-[family-name:var(--font-headline)]">
-              Select
+            <button
+              onClick={() => setSelectedPlan("Weekly")}
+              className={`w-full py-4 rounded-xl font-bold active:scale-95 transition-all border font-[family-name:var(--font-headline)] ${
+                isSelected("Weekly")
+                  ? "bg-primary text-on-primary-fixed border-primary"
+                  : "bg-surface-container-highest text-on-surface hover:bg-surface-variant border-outline-variant/20"
+              }`}
+            >
+              {isSelected("Weekly") ? "Selected" : "Select"}
             </button>
           </div>
 
+        </div>
+
+        <div className="mt-10 flex items-center justify-between gap-4 glass-card rounded-2xl p-5 border border-outline-variant/15">
+          <p className="text-sm text-on-surface-variant">
+            Selected Plan: <span className="text-primary font-bold">{selectedPlan}</span>
+          </p>
+          <button
+            onClick={() => router.push(`/checkout?plan=${encodeURIComponent(selectedPlan)}`)}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-bold"
+          >
+            Continue With {selectedPlan}
+          </button>
         </div>
 
         {/* Comparison Table Section */}

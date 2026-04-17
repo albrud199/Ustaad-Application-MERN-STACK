@@ -1,18 +1,31 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
-import AuthGateButton from "@/components/AuthGateButton";
 import Image from "next/image";
 
 export default function RequestServicePage() {
+  const router = useRouter();
   const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
   const [location, setLocation] = useState<{ latitude: number; longitude: number; address: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [serviceType, setServiceType] = useState("repair");
+  const [problemDescription, setProblemDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("Failed to read uploaded image"));
+      reader.readAsDataURL(file);
+    });
 
   // Handle file uploads from gallery
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,6 +77,47 @@ export default function RequestServicePage() {
       newImages.splice(index, 1);
       return newImages;
     });
+  };
+
+  const handleInitializeServiceOrder = async () => {
+    setSubmitError("");
+    setSubmitting(true);
+
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        router.push(`/login?returnTo=${encodeURIComponent("/request-service")}`);
+        return;
+      }
+
+      const response = await fetch("/api/service-requests/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          serviceType,
+          problemDescription: problemDescription || "Service request",
+          carDetails: {},
+          location: location?.address || "Current location",
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          images: await Promise.all(uploadedImages.map((item) => fileToDataUrl(item.file))),
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to create service request");
+      }
+
+      router.push("/service-results");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Failed to create service request");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -121,7 +175,7 @@ export default function RequestServicePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* General Service Card */}
                         <label className="relative group cursor-pointer">
-                            <input type="radio" name="service_type" className="peer sr-only" defaultChecked />
+                            <input type="radio" name="service_type" value="repair" checked={serviceType === "repair"} onChange={() => setServiceType("repair")} className="peer sr-only" />
                             <div className="h-full p-8 rounded-2xl bg-surface-container-low border border-outline-variant/30 peer-checked:border-primary peer-checked:bg-primary/10 transition-all duration-300">
                                 <div className="w-14 h-14 rounded-xl bg-surface-container-highest flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                                     <span className="material-symbols-outlined text-primary text-3xl">build</span>
@@ -136,7 +190,7 @@ export default function RequestServicePage() {
 
                         {/* Emergency Service Card */}
                         <label className="relative group cursor-pointer">
-                            <input type="radio" name="service_type" className="peer sr-only" />
+                            <input type="radio" name="service_type" value="maintenance" checked={serviceType === "maintenance"} onChange={() => setServiceType("maintenance")} className="peer sr-only" />
                             <div className="h-full p-8 rounded-2xl bg-surface-container-low border border-outline-variant/30 peer-checked:border-error peer-checked:bg-error/10 transition-all duration-300">
                                 <div className="w-14 h-14 rounded-xl bg-surface-container-highest flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
                                     <span className="material-symbols-outlined text-error text-3xl">emergency</span>
@@ -160,6 +214,8 @@ export default function RequestServicePage() {
                             <label className="block text-sm font-bold text-on-surface-variant mb-3 uppercase tracking-widest">Problem Description</label>
                             <textarea 
                                 rows={5} 
+                              value={problemDescription}
+                              onChange={(e) => setProblemDescription(e.target.value)}
                                 className="w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-outline text-on-surface" 
                                 placeholder="Describe the sounds, vibrations, or visible issues..."
                             ></textarea>
@@ -290,18 +346,23 @@ export default function RequestServicePage() {
 
                 {/* Action Bar */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t border-outline-variant/20">
-                    <button className="px-8 py-4 text-on-surface-variant font-bold hover:text-on-surface transition-colors flex items-center gap-2">
+                    <button className="px-8 py-4 text-on-surface-variant font-bold hover:text-on-surface transition-colors flex items-center gap-2" type="button">
                         <span className="material-symbols-outlined">arrow_back</span> Save Draft
                     </button>
-                    <AuthGateButton
-                      href="/service-results"
-                      returnTo="/request-service"
-                      className="w-full md:w-auto px-12 py-5 rounded-2xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+                    <button
+                      type="button"
+                      onClick={handleInitializeServiceOrder}
+                      disabled={submitting}
+                      className="w-full md:w-auto px-12 py-5 rounded-2xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-60"
                     >
-                      Initialize Service Order
+                      {submitting ? "Submitting..." : "Initialize Service Order"}
                       <span className="material-symbols-outlined">rocket_launch</span>
-                    </AuthGateButton>
+                    </button>
                 </div>
+
+                {submitError && (
+                  <div className="rounded-xl border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">{submitError}</div>
+                )}
 
             </div>
         </div>

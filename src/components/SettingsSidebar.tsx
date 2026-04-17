@@ -50,9 +50,12 @@ export default function SettingsSidebar({ activePath }: SettingsSidebarProps) {
       </nav>
       
       <div className="px-6 mt-auto">
-        <button className="w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-xl border border-primary/20 transition-all font-[family-name:var(--font-label)] uppercase tracking-widest">
+        <Link
+          href="/user-profile#payment-methods"
+          className="block w-full text-center py-3 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-xl border border-primary/20 transition-all font-[family-name:var(--font-label)] uppercase tracking-widest"
+        >
           Add Payment Method
-        </button>
+        </Link>
       </div>
     </aside>
   );

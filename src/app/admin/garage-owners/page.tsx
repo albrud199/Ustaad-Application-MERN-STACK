@@ -9,6 +9,13 @@ interface User {
   name: string;
   email: string;
   phone?: string;
+  profilePicture?: string;
+  nidNumber?: string;
+  nidDocuments?: {
+    frontImage?: string;
+    backImage?: string;
+    selfieImage?: string;
+  };
   status: string;
   nidStatus: string;
   createdAt: string;
@@ -179,7 +186,42 @@ export default function GarageOwnersPage() {
               <div className="bg-surface-container-highest p-4 rounded-xl"><p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Status</p>{statusBadge(selectedUser.status)}</div>
               <div className="bg-surface-container-highest p-4 rounded-xl"><p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">NID Status</p>{nidBadge(selectedUser.nidStatus)}</div>
               <div className="bg-surface-container-highest p-4 rounded-xl"><p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Joined</p><p className="text-sm font-semibold text-on-surface">{new Date(selectedUser.createdAt).toLocaleDateString()}</p></div>
+              <div className="bg-surface-container-highest p-4 rounded-xl col-span-2"><p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">NID Number</p><p className="text-sm font-semibold text-on-surface">{selectedUser.nidNumber || "Not submitted"}</p></div>
             </div>
+            {(selectedUser.profilePicture ||
+              selectedUser.nidDocuments?.frontImage ||
+              selectedUser.nidDocuments?.backImage ||
+              selectedUser.nidDocuments?.selfieImage) && (
+              <div>
+                <h4 className="text-sm font-bold text-on-surface mb-3">Verification Images</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {selectedUser.profilePicture && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Profile</p>
+                      <img src={selectedUser.profilePicture} alt="Profile" className="w-full h-24 rounded-lg object-cover border border-outline-variant/20" />
+                    </div>
+                  )}
+                  {selectedUser.nidDocuments?.frontImage && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">NID Front</p>
+                      <img src={selectedUser.nidDocuments.frontImage} alt="NID front" className="w-full h-24 rounded-lg object-cover border border-outline-variant/20" />
+                    </div>
+                  )}
+                  {selectedUser.nidDocuments?.backImage && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">NID Back</p>
+                      <img src={selectedUser.nidDocuments.backImage} alt="NID back" className="w-full h-24 rounded-lg object-cover border border-outline-variant/20" />
+                    </div>
+                  )}
+                  {selectedUser.nidDocuments?.selfieImage && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Selfie</p>
+                      <img src={selectedUser.nidDocuments.selfieImage} alt="NID selfie" className="w-full h-24 rounded-lg object-cover border border-outline-variant/20" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {selectedUser.garage && (
               <div className="glass-card p-6 rounded-2xl border border-outline-variant/15">
                 <h4 className="text-sm font-bold text-tertiary uppercase tracking-widest mb-4">Garage Details</h4>

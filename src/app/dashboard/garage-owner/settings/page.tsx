@@ -2,6 +2,8 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
+import { useEffect } from "react";
+import { getLoggedInUser } from "@/lib/auth";
 
 interface GarageSettings {
   garageName: string;
@@ -26,6 +28,30 @@ export default function GarageSettings() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
+  const getAuthToken = () => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("auth_token") || getLoggedInUser()?.id || "";
+  };
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const token = getAuthToken();
+        if (!token) return;
+        const res = await fetch("/api/dashboard/garage-owner/settings", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { settings: GarageSettings };
+        if (data.settings) setSettings(data.settings);
+      } catch {
+        // ignore initial load failures
+      }
+    };
+
+    loadSettings();
+  }, []);
+
   const handleChange = (field: keyof GarageSettings, value: string | number) => {
     setSettings({ ...settings, [field]: value });
   };
@@ -35,13 +61,20 @@ export default function GarageSettings() {
     setLoading(true);
     
     try {
-      // TODO: Send settings to API
-      // const response = await fetch("/api/dashboard/garage-owner/settings", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(settings),
-      // });
-      
+      const token = getAuthToken();
+      const response = await fetch("/api/dashboard/garage-owner/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save");
+      }
+
       setMessage("Settings saved successfully!");
       setTimeout(() => setMessage(""), 3000);
     } catch {
