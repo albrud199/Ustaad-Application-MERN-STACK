@@ -1,11 +1,15 @@
 // src/app/api/parkings/route.ts
 import { dbConnect } from "@/lib/mongoose";
 import Parking from "@/models/Parking";
+import User from "@/models/User";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
+
+    // Ensure User model is registered
+    User;
 
     // ===== GET QUERY PARAMETERS =====
     const { searchParams } = new URL(request.url);

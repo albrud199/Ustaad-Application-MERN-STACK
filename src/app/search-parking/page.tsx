@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Navbar from "@/components/Navbar";
 import NebulaBackground from "@/components/NebulaBackground";
+import ParkingMap from "@/components/ParkingMap";
 import AuthGateButton from "@/components/AuthGateButton";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,6 +15,8 @@ type ParkingItem = {
   name: string;
   location: string;
   city: string;
+  latitude?: number;
+  longitude?: number;
   pricePerHour: number;
   ratings?: { average?: number; count?: number };
   images?: string[];
@@ -30,6 +33,7 @@ function imageLoader({ src }: { src: string }) {
 export default function SearchParkingPage() {
   const [parkings, setParkings] = useState<ParkingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedParkingId, setSelectedParkingId] = useState<string>("");
 
   const [destination, setDestination] = useState("");
   const [vehicle, setVehicle] = useState<VehicleType>("sedan");
@@ -83,17 +87,17 @@ export default function SearchParkingPage() {
       <main className="pt-[80px] flex-1 flex flex-col md:flex-row h-[calc(100vh-80px)] overflow-hidden relative z-10">
         <aside className="w-full md:w-[360px] bg-surface-variant/40 backdrop-blur-3xl border-r border-outline-variant/15 p-6 overflow-y-auto flex flex-col gap-8 z-40">
           <div className="flex items-center justify-between">
-            <h2 className="font-[family-name:var(--font-headline)] text-xl font-bold text-on-surface tracking-tight">Navigation Filters</h2>
-            <button onClick={reset} className="text-xs font-[family-name:var(--font-label)] uppercase tracking-widest text-primary hover:text-primary-container transition-colors">Reset All</button>
+            <h2 className="font-headline text-xl font-bold text-on-surface tracking-tight">Navigation Filters</h2>
+            <button onClick={reset} className="text-xs font-label uppercase tracking-widest text-primary hover:text-primary-container transition-colors">Reset All</button>
           </div>
 
           <div className="flex flex-col gap-3">
-            <label className="font-[family-name:var(--font-label)] text-xs uppercase tracking-widest text-on-surface-variant font-semibold">Destination</label>
+            <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-semibold">Destination</label>
             <input value={destination} onChange={(e) => setDestination(e.target.value)} type="text" placeholder="Area, city, or garage name" className="w-full bg-surface-container-highest/50 border border-outline-variant/15 rounded-xl py-3 px-4 text-sm text-on-surface" />
           </div>
 
           <div className="flex flex-col gap-3">
-            <label className="font-[family-name:var(--font-label)] text-xs uppercase tracking-widest text-on-surface-variant font-semibold">Vehicle Type</label>
+            <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-semibold">Vehicle Type</label>
             <div className="flex flex-wrap gap-2">
               {(["sedan", "suv", "truck", "ev", "motorbike"] as VehicleType[]).map((type) => (
                 <button
@@ -114,22 +118,32 @@ export default function SearchParkingPage() {
 
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <label className="font-[family-name:var(--font-label)] text-xs uppercase tracking-widest text-on-surface-variant font-semibold">Price Range</label>
+              <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-semibold">Price Range</label>
               <span className="text-xs text-primary font-medium">BDT {minPrice} - BDT {maxPrice}/hr</span>
             </div>
             <input type="range" min={5} max={100} value={minPrice} onChange={(e) => setMinPrice(Number(e.target.value))} />
             <input type="range" min={5} max={100} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} />
           </div>
 
-          <button className="mt-auto w-full py-4 bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl">
+          <button className="mt-auto w-full py-4 bg-linear-to-r from-primary-dim to-primary text-on-primary-fixed font-bold rounded-xl">
             {loading ? "Loading..." : `${filtered.length} Parking Option(s)`}
           </button>
         </aside>
 
-        <section className="flex-1 relative flex flex-col md:flex-row">
-          <div className="w-full bg-surface-variant/40 backdrop-blur-3xl border-l border-outline-variant/15 flex flex-col z-30 h-full">
+        <section className="flex-1 relative flex flex-col md:flex-row gap-0">
+          {/* Map Section */}
+          <div className="hidden md:flex flex-1 relative border-l border-outline-variant/15 z-20">
+            <ParkingMap 
+              parkings={filtered} 
+              selectedId={selectedParkingId}
+              onSelectParking={setSelectedParkingId}
+            />
+          </div>
+
+          {/* List Section */}
+          <div className="w-full md:w-[360px] bg-surface-variant/40 backdrop-blur-3xl border-l border-outline-variant/15 flex flex-col z-30 h-full">
             <div className="p-6 border-b border-outline-variant/10">
-              <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg">Foundations ({filtered.length})</h3>
+              <h3 className="font-headline font-bold text-lg">Foundations ({filtered.length})</h3>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -141,8 +155,18 @@ export default function SearchParkingPage() {
 
               {filtered.map((parking) => {
                 const cover = parking.images?.find((image) => Boolean(image?.trim()))?.trim() || fallbackCoverImage;
+                const isSelected = selectedParkingId === parking._id;
+                
                 return (
-                  <div key={parking._id} className="group p-4 bg-surface-container-low/60 rounded-2xl border border-outline-variant/10 hover:border-primary/30 transition-all relative overflow-hidden">
+                  <div 
+                    key={parking._id} 
+                    onClick={() => setSelectedParkingId(parking._id)}
+                    className={`group p-4 rounded-2xl border transition-all relative overflow-hidden cursor-pointer ${
+                      isSelected
+                        ? "bg-primary/10 border-primary/50 shadow-[0_0_20px_rgba(163,166,255,0.3)]"
+                        : "bg-surface-container-low/60 border-outline-variant/10 hover:border-primary/30"
+                    }`}
+                  >
                     <div className="flex gap-4">
                       <div className="w-24 h-24 rounded-xl overflow-hidden bg-surface-container-highest flex-shrink-0 relative">
                         <Image
