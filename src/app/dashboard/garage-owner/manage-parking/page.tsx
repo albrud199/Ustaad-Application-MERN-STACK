@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
+import GarageLocationPicker from "@/components/GarageLocationPicker";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 
@@ -31,6 +32,8 @@ export default function ManageParking() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<{ latitude: number; longitude: number; locationName: string } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     city: "",
@@ -67,6 +70,11 @@ export default function ManageParking() {
   const handleAddSpot = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    if (!selectedCoordinates) {
+      setMessage("Please select a location on the map");
+      return;
+    }
+
     try {
       const imagePayload = await Promise.all(files.map((file) => fileToDataUrl(file)));
       const token = localStorage.getItem("auth_token");
@@ -78,8 +86,9 @@ export default function ManageParking() {
         },
         body: JSON.stringify({
           ...formData,
-          latitude: 0,
-          longitude: 0,
+          location: selectedCoordinates.locationName,
+          latitude: selectedCoordinates.latitude,
+          longitude: selectedCoordinates.longitude,
           description: "",
           facilities: [],
           allowedVehicleTypes: ["sedan", "suv", "truck", "ev", "motorbike"],
@@ -95,7 +104,9 @@ export default function ManageParking() {
       setParkings((current) => [payload.parking as ParkingSpot, ...current]);
       setFormData({ name: "", city: "", location: "", totalSpots: 1, pricePerHour: 0 });
       setFiles([]);
+      setSelectedCoordinates(null);
       setShowAddForm(false);
+      setShowLocationPicker(false);
       setMessage("Parking saved successfully.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to add parking");
@@ -138,7 +149,7 @@ export default function ManageParking() {
         </button>
 
         {showAddForm && (
-          <div className="glass-card rounded-xl p-6 border border-primary/30 backdrop-blur-xl max-w-2xl">
+          <div className="glass-card rounded-xl p-6 border border-primary/30 backdrop-blur-xl max-w-4xl">
             <form onSubmit={handleAddSpot} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold mb-2">Parking Name</label>
@@ -149,8 +160,29 @@ export default function ManageParking() {
                 <input type="text" placeholder="e.g., Dhaka" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="w-full px-4 py-2 rounded-lg bg-surface-container border border-outline-variant/30 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary transition-colors" required />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-2">Location</label>
-                <input type="text" placeholder="e.g., Gulshan Avenue" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="w-full px-4 py-2 rounded-lg bg-surface-container border border-outline-variant/30 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary transition-colors" required />
+                <label className="block text-sm font-semibold mb-2">Location (Map-based)</label>
+                {!showLocationPicker ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationPicker(true)}
+                    className="w-full px-4 py-2 rounded-lg bg-surface-container border border-outline-variant/30 text-on-surface hover:border-primary transition-colors text-left flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-lg">location_on</span>
+                    {selectedCoordinates
+                      ? `Selected: ${selectedCoordinates.locationName}`
+                      : "Click to select location on map"}
+                  </button>
+                ) : (
+                  <div className="space-y-4 p-4 rounded-lg bg-surface-container border border-primary/30">
+                    <GarageLocationPicker
+                      onLocationSelect={(location) => {
+                        setSelectedCoordinates(location);
+                        setShowLocationPicker(false);
+                      }}
+                      initialLocation={selectedCoordinates}
+                    />
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -187,7 +219,7 @@ export default function ManageParking() {
               </div>
               <div className="flex gap-3">
                 <button type="submit" className="flex-1 px-4 py-2 bg-primary text-on-primary rounded-lg font-semibold hover:bg-primary/90 transition-colors">Add Spot</button>
-                <button type="button" onClick={() => setShowAddForm(false)} className="flex-1 px-4 py-2 bg-surface-container text-on-surface rounded-lg font-semibold hover:bg-surface-container-high transition-colors">Cancel</button>
+                <button type="button" onClick={() => { setShowAddForm(false); setShowLocationPicker(false); setSelectedCoordinates(null); }} className="flex-1 px-4 py-2 bg-surface-container text-on-surface rounded-lg font-semibold hover:bg-surface-container-high transition-colors">Cancel</button>
               </div>
             </form>
           </div>
