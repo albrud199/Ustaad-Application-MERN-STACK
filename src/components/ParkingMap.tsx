@@ -3,20 +3,23 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type ParkingMarker = {
-  _id: string;
+type MapLocationMarker = {
+  id: string;
+  type: "parking" | "garage" | "repairshop";
   name: string;
   location: string;
   city: string;
   latitude: number;
   longitude: number;
-  pricePerHour: number;
+  detailsUrl: string;
+  bookingUrl?: string;
+  pricePerHour?: number;
 };
 
 type ParkingMapProps = {
-  parkings: ParkingMarker[];
+  locations: MapLocationMarker[];
   selectedId?: string;
-  onSelectParking?: (parkingId: string) => void;
+  onSelectLocation?: (locationId: string) => void;
 };
 
 // Popular Dhaka locations for quick selection
@@ -39,7 +42,7 @@ const DHAKA_LOCATIONS = {
   "Ramna": { lat: 23.7337, lng: 90.3901 },
 };
 
-export default function ParkingMap({ parkings, selectedId, onSelectParking }: ParkingMapProps) {
+export default function ParkingMap({ locations, selectedId, onSelectLocation }: ParkingMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -110,7 +113,7 @@ export default function ParkingMap({ parkings, selectedId, onSelectParking }: Pa
 
   // Initialize map
   useEffect(() => {
-    if (!mapReady || !mapContainer.current || !parkings.length || !userLocation) return;
+    if (!mapReady || !mapContainer.current || !locations.length || !userLocation) return;
 
     const L = (window as any).L;
     if (!L) return;
@@ -172,51 +175,76 @@ export default function ParkingMap({ parkings, selectedId, onSelectParking }: Pa
 
     const bounds = L.latLngBounds([[userLocation.lat, userLocation.lng]]);
     
-    parkings.forEach((parking) => {
-      if (!parking.latitude || !parking.longitude) return;
+    locations.forEach((item) => {
+      if (!item.latitude || !item.longitude) return;
 
-      const isSelected = selectedId === parking._id;
+      const isSelected = selectedId === item.id;
       const distance = calculateDistance(
         userLocation.lat,
         userLocation.lng,
-        parking.latitude,
-        parking.longitude
+        item.latitude,
+        item.longitude
       );
 
-      const markerColor = isSelected ? "#1a73e8" : "#d32f2f";
+      const markerColor =
+        item.type === "repairshop"
+          ? "#7e22ce"
+          : item.type === "garage"
+            ? "#0d9488"
+            : "#d32f2f";
 
-      const marker = L.circleMarker([parking.latitude, parking.longitude], {
-        radius: isSelected ? 12 : 8,
-        fillColor: markerColor,
-        color: isSelected ? "#0d47a1" : "#b71c1c",
+      const markerRadius = isSelected ? 12 : item.type === "parking" ? 9 : 8;
+
+      const marker = L.circleMarker([item.latitude, item.longitude], {
+        radius: markerRadius,
+        fillColor: isSelected ? "#1a73e8" : markerColor,
+        color: isSelected ? "#0d47a1" : "#1f2937",
         weight: 2,
         opacity: 1,
         fillOpacity: isSelected ? 0.9 : 0.7,
       });
 
+      const label =
+        item.type === "parking"
+          ? "Parking"
+          : item.type === "garage"
+            ? "Garage"
+            : "Repair Shop";
+
+      marker.bindTooltip(item.name, {
+        direction: "top",
+        offset: [0, -8],
+        opacity: 0.95,
+      });
+
       const popupContent = `
         <div style="padding: 10px; max-width: 220px; color: #000;">
-          <div style="font-weight: bold; margin-bottom: 6px; font-size: 14px;">${parking.name}</div>
-          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${parking.location}</div>
-          <div style="font-size: 13px; color: #E91E63; font-weight: bold; margin-bottom: 6px;">BDT ${parking.pricePerHour}/hr</div>
+          <div style="font-weight: bold; margin-bottom: 6px; font-size: 14px;">${item.name}</div>
+          <div style="font-size: 12px; color: #0f766e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">${label}</div>
+          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${item.location}${item.city ? `, ${item.city}` : ""}</div>
+          ${item.type === "parking" && item.pricePerHour ? `<div style="font-size: 13px; color: #E91E63; font-weight: bold; margin-bottom: 6px;">BDT ${item.pricePerHour}/hr</div>` : ""}
           <div style="font-size: 12px; background-color: #f5f5f5; padding: 4px 8px; border-radius: 4px; color: #333;">📍 ${distance.toFixed(1)} km away</div>
         </div>
       `;
 
       marker.bindPopup(popupContent);
+      marker.on("mouseover", () => marker.openTooltip());
       marker.on("click", () => {
-        onSelectParking?.(parking._id);
+        onSelectLocation?.(item.id);
+        if (item.detailsUrl) {
+          window.location.assign(item.detailsUrl);
+        }
       });
 
       marker.addTo(map.current);
       map.current._markers.push(marker);
-      bounds.extend([parking.latitude, parking.longitude]);
+      bounds.extend([item.latitude, item.longitude]);
     });
 
     if (bounds.isValid()) {
       map.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [mapReady, parkings, selectedId, onSelectParking, userLocation]);
+  }, [mapReady, locations, selectedId, onSelectLocation, userLocation]);
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
     setUserLocation(location);

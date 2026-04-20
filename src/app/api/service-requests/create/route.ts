@@ -5,6 +5,7 @@ import Repairshop from "@/models/Repairshop";
 import Conversation from "@/models/Conversation";
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 type ServiceType = "general" | "emergency" | "repair" | "maintenance" | "inspection" | "cleaning";
 
@@ -39,7 +40,7 @@ async function pickRepairshop({
   longitude?: number;
   repairshopId?: string;
 }) {
-  if (repairshopId) {
+  if (repairshopId && mongoose.Types.ObjectId.isValid(repairshopId)) {
     const selected = await Repairshop.findOne({ _id: repairshopId, status: "active" }).populate("ownerId", "name email phone").lean();
     if (selected) return selected;
   }
@@ -48,7 +49,29 @@ async function pickRepairshop({
   if (shops.length === 0) return null;
 
   if (typeof latitude !== "number" || typeof longitude !== "number") {
-    return shops[0];
+    const loadByShop = await ServiceRequest.aggregate([
+      {
+        $match: {
+          assignedRepairshopId: { $ne: null },
+          status: { $in: ["assigned", "in_progress"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$assignedRepairshopId",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const loadMap = new Map(loadByShop.map((entry) => [String(entry._id), Number(entry.count || 0)]));
+
+    return shops
+      .map((shop) => ({
+        shop,
+        count: loadMap.get(String(shop._id)) || 0,
+      }))
+      .sort((left, right) => left.count - right.count)[0]?.shop ?? shops[0];
   }
 
   return shops
@@ -104,6 +127,9 @@ export async function POST(request: NextRequest) {
       repairshopId,
     } = body;
 
+    const parsedLatitude = typeof latitude === "number" ? latitude : Number(latitude);
+    const parsedLongitude = typeof longitude === "number" ? longitude : Number(longitude);
+
     // ===== VALIDATE REQUIRED FIELDS =====
     if (!serviceType || !problemDescription || !location) {
       return NextResponse.json(
@@ -129,8 +155,8 @@ export async function POST(request: NextRequest) {
     // ===== CREATE SERVICE REQUEST =====
     const normalized = normalizeServiceType(serviceType);
     const repairshop = await pickRepairshop({
-      latitude: typeof latitude === "number" ? latitude : undefined,
-      longitude: typeof longitude === "number" ? longitude : undefined,
+      latitude: Number.isFinite(parsedLatitude) ? parsedLatitude : undefined,
+      longitude: Number.isFinite(parsedLongitude) ? parsedLongitude : undefined,
       repairshopId: typeof repairshopId === "string" ? repairshopId : undefined,
     });
 
@@ -141,8 +167,8 @@ export async function POST(request: NextRequest) {
       problemDescription,
       carDetails: carDetails || {},
       location,
-      latitude: latitude || 0,
-      longitude: longitude || 0,
+      latitude: Number.isFinite(parsedLatitude) ? parsedLatitude : 0,
+      longitude: Number.isFinite(parsedLongitude) ? parsedLongitude : 0,
       preferredDate: preferredDate ? new Date(preferredDate) : undefined,
       preferredTime,
       images: Array.isArray(body.images) ? body.images : [],

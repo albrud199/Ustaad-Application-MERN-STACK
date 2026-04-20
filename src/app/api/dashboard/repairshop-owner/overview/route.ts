@@ -21,8 +21,9 @@ export async function GET(request: NextRequest) {
     .sort({ createdAt: -1 })
     .lean();
 
+  const activeRequestList = requests.filter((requestItem) => ["open", "assigned", "in_progress"].includes(String(requestItem.status)));
   const completedRequests = requests.filter((requestItem) => requestItem.status === "completed");
-  const activeRequests = requests.filter((requestItem) => ["open", "assigned", "in_progress"].includes(String(requestItem.status))).length;
+  const activeRequests = activeRequestList.length;
   const emergencyRequests = requests.filter((requestItem) => requestItem.serviceMode === "emergency").length;
 
   const totalRevenue = completedRequests.reduce(
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       emergencyRequests,
       totalRevenue,
     },
-    requests,
+    requests: activeRequestList,
     history: completedRequests.slice(0, 10),
   });
 }

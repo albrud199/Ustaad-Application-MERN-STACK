@@ -29,6 +29,36 @@ function hoursBetween(startTime: string, endTime: string) {
   return Math.max(0.5, end - start);
 }
 
+function toLocalDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toLocalTimeInput(date: Date) {
+  const hours = `${date.getHours()}`.padStart(2, "0");
+  const minutes = `${date.getMinutes()}`.padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function getNextBookingWindow(baseDate = new Date()) {
+  const start = new Date(baseDate);
+  start.setSeconds(0, 0);
+  const minutes = start.getMinutes();
+  let addMinutes = 30 - (minutes % 30);
+  if (addMinutes === 0) addMinutes = 30;
+  start.setMinutes(minutes + addMinutes);
+
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+
+  return {
+    date: toLocalDateInput(start),
+    start: toLocalTimeInput(start),
+    end: toLocalTimeInput(end),
+  };
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -56,9 +86,31 @@ export default function CheckoutPage() {
   const defaultDate =
     searchParams.get("date") || new Date().toISOString().slice(0, 10);
 
-  const [bookingDate, setBookingDate] = useState(defaultDate);
-  const [startTime, setStartTime] = useState(defaultStart);
-  const [endTime, setEndTime] = useState(defaultEnd);
+  const initialWindow = useMemo(() => {
+    const now = new Date();
+    const parsedStart = new Date(`${defaultDate}T${defaultStart}:00`);
+
+    if (Number.isNaN(parsedStart.getTime()) || parsedStart <= now) {
+      return getNextBookingWindow(now);
+    }
+
+    return {
+      date: defaultDate,
+      start: defaultStart,
+      end: defaultEnd,
+    };
+  }, [defaultDate, defaultStart, defaultEnd]);
+
+  const [bookingDate, setBookingDate] = useState(initialWindow.date);
+  const [startTime, setStartTime] = useState(initialWindow.start);
+  const [endTime, setEndTime] = useState(initialWindow.end);
+
+  const today = useMemo(() => toLocalDateInput(new Date()), []);
+  const minStartTime = useMemo(() => {
+    if (bookingDate !== today) return "00:00";
+    const nextWindow = getNextBookingWindow(new Date());
+    return nextWindow.start;
+  }, [bookingDate, today]);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -125,8 +177,26 @@ export default function CheckoutPage() {
         throw new Error("Add a vehicle before checking out.");
       }
 
-      const start = new Date(`${bookingDate}T${startTime}:00`);
-      let end = new Date(`${bookingDate}T${endTime}:00`);
+      let effectiveDate = bookingDate;
+      let effectiveStartTime = startTime;
+      let effectiveEndTime = endTime;
+
+      let start = new Date(`${effectiveDate}T${effectiveStartTime}:00`);
+      let end = new Date(`${effectiveDate}T${effectiveEndTime}:00`);
+
+      if (start <= new Date()) {
+        const nextWindow = getNextBookingWindow(new Date());
+        effectiveDate = nextWindow.date;
+        effectiveStartTime = nextWindow.start;
+        effectiveEndTime = nextWindow.end;
+        setBookingDate(effectiveDate);
+        setStartTime(effectiveStartTime);
+        setEndTime(effectiveEndTime);
+
+        start = new Date(`${effectiveDate}T${effectiveStartTime}:00`);
+        end = new Date(`${effectiveDate}T${effectiveEndTime}:00`);
+      }
+
       if (end <= start) {
         end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
       }
@@ -199,7 +269,7 @@ export default function CheckoutPage() {
       }
 
       router.push(
-        `/booking-confirmation?parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(bookingDate)}&start=${encodeURIComponent(startTime)}&end=${encodeURIComponent(endTime)}`,
+        `/booking-confirmation?parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(effectiveDate)}&start=${encodeURIComponent(effectiveStartTime)}&end=${encodeURIComponent(effectiveEndTime)}`,
       );
     } catch (submitError) {
       setError(
@@ -281,6 +351,7 @@ export default function CheckoutPage() {
                     value={bookingDate}
                     onChange={(e) => setBookingDate(e.target.value)}
                     type="date"
+                    min={today}
                     className="mt-2 w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface outline-none"
                   />
                 </div>
@@ -292,6 +363,7 @@ export default function CheckoutPage() {
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                     type="time"
+                    min={minStartTime}
                     className="mt-2 w-full bg-surface-container-highest border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface outline-none"
                   />
                 </div>

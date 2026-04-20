@@ -6,7 +6,8 @@ import { getLoggedInUser, logout } from "@/lib/auth";
 
 export default function Navbar() {
   const pathname = usePathname();
-  const user = getLoggedInUser();
+  const [user, setUser] = useState<ReturnType<typeof getLoggedInUser>>(null);
+  const [hydrated, setHydrated] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +62,21 @@ export default function Navbar() {
   ];
 
   useEffect(() => {
+    const syncUser = () => setUser(getLoggedInUser());
+
+    syncUser();
+    setHydrated(true);
+
+    window.addEventListener("storage", syncUser);
+    window.addEventListener("focus", syncUser);
+
+    return () => {
+      window.removeEventListener("storage", syncUser);
+      window.removeEventListener("focus", syncUser);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       if (!menuRef.current) return;
       if (!menuRef.current.contains(event.target as Node)) {
@@ -103,7 +119,7 @@ export default function Navbar() {
           </nav>
         </div>
         <div className="flex items-center gap-4">
-          {user ? (
+          {hydrated && user ? (
             <div className="relative" ref={menuRef}>
               <div className="flex items-center gap-2">
                 <Link

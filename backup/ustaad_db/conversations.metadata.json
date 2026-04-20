@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"serviceRequestId":{"$numberInt":"1"}},"name":"serviceRequestId_1","unique":true}],"uuid":"b6b31409e551457581b81d96de1508b7","collectionName":"conversations","type":"collection"}

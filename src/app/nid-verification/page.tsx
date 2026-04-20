@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import NebulaBackground from '@/components/NebulaBackground';
 import Footer from '@/components/Footer';
+import GarageLocationPicker from '@/components/GarageLocationPicker';
 import { persistLoggedInUser, type UserRole } from '@/lib/auth';
 
 type RegistrationData = {
@@ -27,6 +28,13 @@ export default function NIDVerificationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [businessCity, setBusinessCity] = useState('');
+  const [pinnedLocation, setPinnedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    locationName: string;
+  } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -118,6 +126,23 @@ export default function NIDVerificationPage() {
     if (!profilePicture) missing.push('profile picture');
     if (!selfie) missing.push('selfie with NID');
 
+    const requiresBusinessLocation =
+      registrationData.role === 'garage_owner' || registrationData.role === 'repairshop_owner';
+
+    if (requiresBusinessLocation) {
+      if (!businessName.trim()) {
+        missing.push(
+          registrationData.role === 'garage_owner' ? 'garage name' : 'repairshop name'
+        );
+      }
+      if (!businessCity.trim()) {
+        missing.push('city');
+      }
+      if (!pinnedLocation) {
+        missing.push('pinned map location');
+      }
+    }
+
     if (missing.length > 0) {
       setErrorMsg(`Please provide: ${missing.join(', ')}.`);
       return;
@@ -137,6 +162,26 @@ export default function NIDVerificationPage() {
         JSON.stringify({
           ...registrationData,
           nidNumber: nidNumber.trim(),
+          garage:
+            registrationData.role === 'garage_owner'
+              ? {
+                  name: businessName.trim(),
+                  city: businessCity.trim(),
+                  location: pinnedLocation?.locationName || '',
+                  latitude: pinnedLocation?.latitude || 0,
+                  longitude: pinnedLocation?.longitude || 0,
+                }
+              : undefined,
+          repairshop:
+            registrationData.role === 'repairshop_owner'
+              ? {
+                  name: businessName.trim(),
+                  city: businessCity.trim(),
+                  location: pinnedLocation?.locationName || '',
+                  latitude: pinnedLocation?.latitude || 0,
+                  longitude: pinnedLocation?.longitude || 0,
+                }
+              : undefined,
         })
       );
 
@@ -218,6 +263,45 @@ export default function NIDVerificationPage() {
             <p className="text-xs mt-2 text-on-surface-variant">{nidBack ? `Selected: ${nidBack.name}` : 'Upload back side'}</p>
           </div>
         </div>
+
+        {(registrationData.role === 'garage_owner' || registrationData.role === 'repairshop_owner') && (
+          <div className="glass-card p-6 rounded-2xl border border-outline-variant/15 mt-6 space-y-5">
+            <div>
+              <h2 className="text-lg font-bold">
+                {registrationData.role === 'garage_owner' ? 'Garage Location Setup' : 'Repair Shop Location Setup'}
+              </h2>
+              <p className="text-sm text-on-surface-variant mt-1">
+                Pin your business location so car owners can find it on the map.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                placeholder={registrationData.role === 'garage_owner' ? 'Garage name' : 'Repairshop name'}
+                className="w-full bg-surface-container-highest border border-outline-variant/20 rounded-xl px-4 py-3 text-on-surface"
+              />
+              <input
+                value={businessCity}
+                onChange={(e) => setBusinessCity(e.target.value)}
+                placeholder="City"
+                className="w-full bg-surface-container-highest border border-outline-variant/20 rounded-xl px-4 py-3 text-on-surface"
+              />
+            </div>
+
+            <GarageLocationPicker onLocationSelect={setPinnedLocation} />
+
+            {pinnedLocation && (
+              <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-on-surface">
+                <p className="font-semibold text-primary">Pinned location saved</p>
+                <p className="text-on-surface-variant mt-1">
+                  {pinnedLocation.locationName} ({pinnedLocation.latitude.toFixed(5)}, {pinnedLocation.longitude.toFixed(5)})
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="glass-card p-6 rounded-2xl border border-outline-variant/15 mt-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
