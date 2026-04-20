@@ -202,7 +202,7 @@ export default function ServiceResultsPage() {
 
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-4 border-t border-outline-variant/10 border-dashed">
                     <span className="text-on-surface-variant text-sm italic">{garage.summary}</span>
-                    <AuthGateButton href={`/service-booking?repairshop=${encodeURIComponent(garage.name)}&rating=${garage.rating}&pricing=${garage.pricing}`} returnTo="/service-results" className="w-full md:w-auto bg-primary-container text-on-primary-container px-6 py-2.5 rounded-lg font-bold hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-sm text-sm border border-primary/20 shrink-0">Select</AuthGateButton>
+                    <AuthGateButton href={`/service-booking?repairshopId=${encodeURIComponent(garage.id)}&repairshop=${encodeURIComponent(garage.name)}&rating=${garage.rating}&pricing=${garage.pricing}&from=${encodeURIComponent("/request-service")}`} returnTo="/service-results" className="w-full md:w-auto bg-primary-container text-on-primary-container px-6 py-2.5 rounded-lg font-bold hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-sm text-sm border border-primary/20 shrink-0">Select</AuthGateButton>
                   </div>
                 </div>
               </div>

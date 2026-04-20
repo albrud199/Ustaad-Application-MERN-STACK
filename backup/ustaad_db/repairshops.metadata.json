@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"ownerId":{"$numberInt":"1"}},"name":"ownerId_1","unique":true}],"uuid":"265ebe7a56364c79a484f8868de26468","collectionName":"repairshops","type":"collection"}

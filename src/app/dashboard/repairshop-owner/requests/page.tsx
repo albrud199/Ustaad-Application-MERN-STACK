@@ -11,6 +11,8 @@ type RequestItem = {
   status: string;
   problemDescription: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   carOwnerId?: { name: string; email: string };
   carDetails?: { licensePlate?: string };
 };
@@ -71,6 +73,27 @@ export default function RepairshopRequestsPage() {
                       <p className="font-semibold text-lg">{requestItem.carOwnerId?.name || "Customer"}</p>
                       <p className="text-sm text-on-surface-variant">{requestItem.carDetails?.licensePlate || "Unknown plate"} • {requestItem.location}</p>
                       <p className="text-sm text-on-surface-variant mt-2">{requestItem.problemDescription}</p>
+
+                      {typeof requestItem.latitude === "number" && typeof requestItem.longitude === "number" && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${requestItem.latitude},${requestItem.longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest"
+                          >
+                            View Customer on Map
+                          </a>
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${requestItem.latitude},${requestItem.longitude}&travelmode=driving`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-2 rounded-lg bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-widest"
+                          >
+                            Navigate to Customer
+                          </a>
+                        </div>
+                      )}
                     </div>
                     <div className="text-sm text-on-surface-variant">{requestItem.carOwnerId?.email || ""}</div>
                   </div>

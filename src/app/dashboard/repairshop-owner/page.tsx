@@ -12,6 +12,8 @@ type RepairshopRequest = {
   status: string;
   problemDescription: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   createdAt: string;
   assignedAt?: string;
   conversationId?: string | { _id: string } | null;
@@ -71,6 +73,7 @@ export default function RepairshopDashboardPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatText, setChatText] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState<Record<string, "in_progress" | "completed" | null>>({});
 
   const activeRequest = useMemo(
     () => overview?.requests.find((requestItem) => requestItem._id === activeRequestId) || overview?.requests[0] || null,
@@ -85,19 +88,31 @@ export default function RepairshopDashboardPage() {
 
   const token = typeof window === "undefined" ? "" : localStorage.getItem("auth_token") || "";
 
-  useEffect(() => {
-    const loadOverview = async () => {
-      try {
-        const response = await fetch("/api/dashboard/repairshop-owner/overview", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const payload = (await response.json().catch(() => ({}))) as { error?: string } & Partial<OverviewPayload>;
-        if (!response.ok) {
-          throw new Error(payload.error || "Failed to load repairshop dashboard");
-        }
+  const loadOverview = async () => {
+    const response = await fetch("/api/dashboard/repairshop-owner/overview", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const payload = (await response.json().catch(() => ({}))) as { error?: string } & Partial<OverviewPayload>;
+    if (!response.ok) {
+      throw new Error(payload.error || "Failed to load repairshop dashboard");
+    }
 
-        setOverview(payload as OverviewPayload);
-        const firstRequest = (payload as OverviewPayload).requests?.[0];
+    const casted = payload as OverviewPayload;
+    setOverview(casted);
+
+    const nextRequests = casted.requests || [];
+    if (!nextRequests.find((requestItem) => requestItem._id === activeRequestId)) {
+      setActiveRequestId(nextRequests[0]?._id || "");
+    }
+
+    return casted;
+  };
+
+  useEffect(() => {
+    const loadInitialOverview = async () => {
+      try {
+        const loaded = await loadOverview();
+        const firstRequest = loaded?.requests?.[0];
         if (firstRequest) {
           setActiveRequestId(firstRequest._id);
         }
@@ -108,7 +123,8 @@ export default function RepairshopDashboardPage() {
       }
     };
 
-    loadOverview();
+    void loadInitialOverview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
@@ -155,6 +171,9 @@ export default function RepairshopDashboardPage() {
   }, [activeConversationId, activeRequest, token]);
 
   const updateRequestStatus = async (requestId: string, status: string) => {
+    if (status !== "in_progress" && status !== "completed") return;
+
+    setStatusUpdating((prev) => ({ ...prev, [requestId]: status }));
     try {
       const response = await fetch("/api/dashboard/repairshop-owner/requests", {
         method: "PUT",
@@ -169,15 +188,11 @@ export default function RepairshopDashboardPage() {
         throw new Error("Failed to update service request");
       }
 
-      const refreshed = await fetch("/api/dashboard/repairshop-owner/overview", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const payload = (await refreshed.json().catch(() => ({}))) as Partial<OverviewPayload>;
-      if (refreshed.ok) {
-        setOverview(payload as OverviewPayload);
-      }
+      await loadOverview();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to update service request");
+    } finally {
+      setStatusUpdating((prev) => ({ ...prev, [requestId]: null }));
     }
   };
 
@@ -252,11 +267,18 @@ export default function RepairshopDashboardPage() {
                   overview.requests.map((requestItem) => {
                     const isActive = requestItem._id === activeRequest?._id;
                     return (
-                      <button
+                      <div
                         key={requestItem._id}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setActiveRequestId(requestItem._id)}
-                        className={`w-full text-left glass-card rounded-2xl p-5 border transition-all ${
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setActiveRequestId(requestItem._id);
+                          }
+                        }}
+                        className={`w-full text-left glass-card rounded-2xl p-5 border transition-all cursor-pointer ${
                           isActive ? "border-primary/50 bg-primary/5" : "border-outline-variant/20 hover:border-primary/30"
                         }`}
                       >
@@ -273,17 +295,63 @@ export default function RepairshopDashboardPage() {
                             <p className="font-semibold text-lg">{requestItem.carOwnerId?.name || "Customer"}</p>
                             <p className="text-sm text-on-surface-variant">{requestItem.carDetails?.licensePlate || "Unknown plate"} • {requestItem.location}</p>
                             <p className="text-sm text-on-surface-variant mt-2 line-clamp-2">{requestItem.problemDescription}</p>
+                            {typeof requestItem.latitude === "number" && typeof requestItem.longitude === "number" && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <a
+                                  href={`https://www.google.com/maps/search/?api=1&query=${requestItem.latitude},${requestItem.longitude}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-semibold text-xs"
+                                >
+                                  View Map
+                                </a>
+                                <a
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${requestItem.latitude},${requestItem.longitude}&travelmode=driving`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary font-semibold text-xs"
+                                >
+                                  Directions
+                                </a>
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <button type="button" onClick={(event) => { event.stopPropagation(); void updateRequestStatus(requestItem._id, "in_progress"); }} className="px-4 py-2 rounded-lg bg-secondary/10 text-secondary font-semibold text-sm">
-                              Start
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void updateRequestStatus(requestItem._id, "in_progress");
+                              }}
+                              disabled={Boolean(statusUpdating[requestItem._id])}
+                              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all active:scale-95 ${
+                                statusUpdating[requestItem._id] === "in_progress"
+                                  ? "bg-secondary text-white animate-pulse"
+                                  : "bg-secondary/10 text-secondary hover:bg-secondary/20"
+                              } disabled:opacity-70`}
+                            >
+                              {statusUpdating[requestItem._id] === "in_progress" ? "Starting..." : "Start"}
                             </button>
-                            <button type="button" onClick={(event) => { event.stopPropagation(); void updateRequestStatus(requestItem._id, "completed"); }} className="px-4 py-2 rounded-lg bg-primary/10 text-primary font-semibold text-sm">
-                              Complete
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void updateRequestStatus(requestItem._id, "completed");
+                              }}
+                              disabled={Boolean(statusUpdating[requestItem._id])}
+                              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all active:scale-95 ${
+                                statusUpdating[requestItem._id] === "completed"
+                                  ? "bg-primary text-white animate-pulse"
+                                  : "bg-primary/10 text-primary hover:bg-primary/20"
+                              } disabled:opacity-70`}
+                            >
+                              {statusUpdating[requestItem._id] === "completed" ? "Completing..." : "Complete"}
                             </button>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     );
                   })
                 ) : (

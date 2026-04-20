@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
@@ -9,6 +10,9 @@ import Image from "next/image";
 
 export default function RequestServicePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedRepairshopId = searchParams.get("repairshopId") || "";
+  const selectedRepairshopName = searchParams.get("repairshopName") || "";
   const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
   const [location, setLocation] = useState<{ latitude: number; longitude: number; address: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -84,37 +88,33 @@ export default function RequestServicePage() {
     setSubmitting(true);
 
     try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
+      const loggedIn = localStorage.getItem("ustaad_logged_in") === "true";
+      if (!loggedIn) {
         router.push(`/login?returnTo=${encodeURIComponent("/request-service")}`);
         return;
       }
 
-      const response = await fetch("/api/service-requests/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          serviceType,
-          problemDescription: problemDescription || "Service request",
-          carDetails: {},
-          location: location?.address || "Current location",
-          latitude: location?.latitude,
-          longitude: location?.longitude,
-          images: await Promise.all(uploadedImages.map((item) => fileToDataUrl(item.file))),
-        }),
-      });
+      const draftPayload = {
+        serviceType,
+        problemDescription: problemDescription || "Service request",
+        carDetails: {},
+        location: location?.address || "Current location",
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        images: await Promise.all(uploadedImages.map((item) => fileToDataUrl(item.file))),
+      };
 
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      if (!response.ok) {
-        throw new Error(payload.error || "Failed to create service request");
+      sessionStorage.setItem("service_request_draft", JSON.stringify(draftPayload));
+
+      if (selectedRepairshopId) {
+        router.push(
+          `/service-booking?repairshopId=${encodeURIComponent(selectedRepairshopId)}&repairshop=${encodeURIComponent(selectedRepairshopName || "Selected repair shop")}`
+        );
+      } else {
+        router.push("/service-results");
       }
-
-      router.push("/service-results");
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Failed to create service request");
+      setSubmitError(error instanceof Error ? error.message : "Failed to prepare service request");
     } finally {
       setSubmitting(false);
     }
@@ -134,6 +134,11 @@ export default function RequestServicePage() {
                 The Celestial <br/>Service Link
             </h1>
             <p className="text-xl text-on-surface-variant max-w-xl leading-relaxed">Connect your vehicle with our elite maintenance nebula. Follow the navigation vectors below.</p>
+            {selectedRepairshopId && (
+              <p className="mt-4 inline-block px-4 py-2 rounded-xl bg-primary/10 border border-primary/30 text-primary text-sm font-semibold">
+                Selected repair shop: {selectedRepairshopName || selectedRepairshopId}
+              </p>
+            )}
         </section>
 
         {/* Multi-Step Form Layout */}
@@ -355,7 +360,7 @@ export default function RequestServicePage() {
                       disabled={submitting}
                       className="w-full md:w-auto px-12 py-5 rounded-2xl bg-gradient-to-r from-primary to-primary-dim text-on-primary-fixed font-[family-name:var(--font-headline)] font-bold text-lg shadow-[0_10px_30px_rgba(163,166,255,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-60"
                     >
-                      {submitting ? "Submitting..." : "Initialize Service Order"}
+                      {submitting ? "Preparing..." : "Continue to Repairshop Selection"}
                       <span className="material-symbols-outlined">rocket_launch</span>
                     </button>
                 </div>

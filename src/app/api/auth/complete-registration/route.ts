@@ -13,6 +13,20 @@ type RegistrationData = {
   password: string;
   role: "car_owner" | "garage_owner" | "repairshop_owner";
   nidNumber: string;
+  garage?: {
+    name: string;
+    location: string;
+    city: string;
+    latitude: number;
+    longitude: number;
+  };
+  repairshop?: {
+    name: string;
+    location: string;
+    city: string;
+    latitude: number;
+    longitude: number;
+  };
 };
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -57,6 +71,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Incomplete registration details." }, { status: 400 });
     }
 
+    if (userData.role === "garage_owner") {
+      if (
+        !userData.garage?.name ||
+        !userData.garage?.city ||
+        !Number(userData.garage?.latitude) ||
+        !Number(userData.garage?.longitude)
+      ) {
+        return NextResponse.json({ error: "Garage owners must provide a pinned garage location." }, { status: 400 });
+      }
+    }
+
+    if (userData.role === "repairshop_owner") {
+      if (
+        !userData.repairshop?.name ||
+        !userData.repairshop?.city ||
+        !Number(userData.repairshop?.latitude) ||
+        !Number(userData.repairshop?.longitude)
+      ) {
+        return NextResponse.json({ error: "Repairshop owners must provide a pinned repairshop location." }, { status: 400 });
+      }
+    }
+
     const existingUser = await User.findOne({ email: userData.email.toLowerCase() });
     if (existingUser) {
       return NextResponse.json({ error: "User with this email already exists." }, { status: 409 });
@@ -92,16 +128,33 @@ export async function POST(request: NextRequest) {
         backImage,
         selfieImage,
       },
+      garage:
+        userData.role === "garage_owner"
+          ? {
+              name: userData.garage?.name || "",
+              location: userData.garage?.location || "",
+              city: userData.garage?.city || "",
+              latitude: Number(userData.garage?.latitude || 0),
+              longitude: Number(userData.garage?.longitude || 0),
+              capacity: 0,
+              availableSpots: 0,
+              operatingHours: {
+                open: "08:00",
+                close: "20:00",
+              },
+              facilities: [],
+            }
+          : undefined,
     });
 
     if (userData.role === "repairshop_owner") {
       await Repairshop.create({
         ownerId: createdUser._id,
-        name: `${createdUser.name} Repair Shop`,
-        location: "",
-        city: "",
-        latitude: 0,
-        longitude: 0,
+        name: userData.repairshop?.name || `${createdUser.name} Repair Shop`,
+        location: userData.repairshop?.location || "",
+        city: userData.repairshop?.city || "",
+        latitude: Number(userData.repairshop?.latitude || 0),
+        longitude: Number(userData.repairshop?.longitude || 0),
         services: ["general", "emergency", "repair", "maintenance"],
         emergencyAvailable: true,
         status: "active",

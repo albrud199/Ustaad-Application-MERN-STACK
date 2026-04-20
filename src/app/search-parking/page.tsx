@@ -24,6 +24,19 @@ type ParkingItem = {
   facilities?: string[];
 };
 
+type MapLocationItem = {
+  id: string;
+  type: "parking" | "garage" | "repairshop";
+  name: string;
+  location: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  detailsUrl: string;
+  bookingUrl?: string;
+  pricePerHour?: number;
+};
+
 const fallbackCoverImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuD-w5IMCEqd2sdOUxfTmlMwaerP4rNQ0KKA946DH1Nas7xo61e-mUbRdEggOtEzxxPNZZtc1Z3sODDCUqHvDzn95Y80MzrX8EPztxn-4bnidl-xSy9OzDpW1bWjY5wgraQLVWeZlI83gBlZg_lhkrMiYKXdbo2X4mdeSEdxSzdWltwtyJAsxNqN635hkiUjPHv56grY1TMCkun0jj40g1c_-KZ6MJUWEaZm8-CiTPSicMUPA_trOHNohnxA_e43hvbudhHZ2tOyNIo";
 
 function imageLoader({ src }: { src: string }) {
@@ -32,6 +45,7 @@ function imageLoader({ src }: { src: string }) {
 
 export default function SearchParkingPage() {
   const [parkings, setParkings] = useState<ParkingItem[]>([]);
+  const [mapLocations, setMapLocations] = useState<MapLocationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedParkingId, setSelectedParkingId] = useState<string>("");
 
@@ -43,11 +57,19 @@ export default function SearchParkingPage() {
   useEffect(() => {
     const loadParkings = async () => {
       try {
-        const res = await fetch("/api/parkings?status=active&limit=100");
-        const data = (await res.json()) as { data?: ParkingItem[] };
-        setParkings(data.data || []);
+        const [parkingRes, locationRes] = await Promise.all([
+          fetch("/api/parkings?status=active&limit=100"),
+          fetch("/api/map/locations"),
+        ]);
+
+        const parkingData = (await parkingRes.json()) as { data?: ParkingItem[] };
+        const locationData = (await locationRes.json()) as { locations?: MapLocationItem[] };
+
+        setParkings(parkingData.data || []);
+        setMapLocations(locationData.locations || []);
       } catch {
         setParkings([]);
+        setMapLocations([]);
       } finally {
         setLoading(false);
       }
@@ -134,9 +156,9 @@ export default function SearchParkingPage() {
           {/* Map Section */}
           <div className="hidden md:flex flex-1 relative border-l border-outline-variant/15 z-20">
             <ParkingMap 
-              parkings={filtered} 
+              locations={mapLocations}
               selectedId={selectedParkingId}
-              onSelectParking={setSelectedParkingId}
+              onSelectLocation={setSelectedParkingId}
             />
           </div>
 
