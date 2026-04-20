@@ -42,7 +42,11 @@ export default function GarageLocationPicker({
   const [selectedLocation, setSelectedLocation] = useState<{
     lat: number;
     lng: number;
-  } | null>(initialLocation || null);
+  } | null>(
+    initialLocation
+      ? { lat: initialLocation.latitude, lng: initialLocation.longitude }
+      : null,
+  );
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;

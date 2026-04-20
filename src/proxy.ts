@@ -1,16 +1,15 @@
-// src/middleware.ts
 /**
- * MIDDLEWARE - Protect routes from unauthorized access
- * This middleware runs on every request to protected routes
+ * PROXY - Protect routes from unauthorized access
+ * This proxy runs on requests to protected routes
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // ===== GET TOKEN FROM COOKIES OR HEADER =====
   const token = request.cookies.get("auth_token")?.value;
   const authHeader = request.headers.get("authorization");
-  
+
   const hasToken = !!token || (!!authHeader && authHeader.startsWith("Bearer "));
 
   // ===== DEFINE PROTECTED ROUTES =====
@@ -64,7 +63,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// ===== CONFIG - Which routes to apply middleware to =====
+// ===== CONFIG - Which routes to apply proxy to =====
 export const config = {
   matcher: [
     // Protect all these routes

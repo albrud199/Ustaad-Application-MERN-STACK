@@ -179,7 +179,14 @@ export default function ManageParking() {
                         setSelectedCoordinates(location);
                         setShowLocationPicker(false);
                       }}
-                      initialLocation={selectedCoordinates}
+                      initialLocation={
+                        selectedCoordinates
+                          ? {
+                              latitude: selectedCoordinates.latitude,
+                              longitude: selectedCoordinates.longitude,
+                            }
+                          : undefined
+                      }
                     />
                   </div>
                 )}

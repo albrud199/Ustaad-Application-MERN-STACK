@@ -8,7 +8,7 @@ import LocationPreviewMap from "@/components/LocationPreviewMap";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 type ParkingDetails = {
   _id: string;
@@ -56,7 +56,7 @@ function hoursBetween(startTime: string, endTime: string) {
   return Math.max(0.5, end - start);
 }
 
-export default function ParkingDetailsPage() {
+function ParkingDetailsContent() {
   const searchParams = useSearchParams();
   const parkingId = searchParams.get("parkingId") || "";
 
@@ -271,5 +271,26 @@ export default function ParkingDetailsPage() {
 
       <Footer />
     </>
+  );
+}
+
+export default function ParkingDetailsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-surface text-on-surface">
+          <NebulaBackground />
+          <Navbar />
+          <main className="pt-32 pb-24 max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+            <div className="mb-10 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-6 py-5 text-on-surface-variant">
+              Loading parking details...
+            </div>
+          </main>
+          <Footer />
+        </div>
+      }
+    >
+      <ParkingDetailsContent />
+    </Suspense>
   );
 }

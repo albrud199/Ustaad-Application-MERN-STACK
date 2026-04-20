@@ -4,7 +4,7 @@ import NebulaBackground from "@/components/NebulaBackground";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 type Vehicle = {
   vehicleId?: string;
@@ -60,6 +60,26 @@ function getNextBookingWindow(baseDate = new Date()) {
 }
 
 export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutLoadingFallback />}>
+      <CheckoutContent />
+    </Suspense>
+  );
+}
+
+function CheckoutLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+      <NebulaBackground />
+      <div className="relative z-10 text-center">
+        <span className="material-symbols-outlined text-primary text-5xl animate-spin">hourglass_bottom</span>
+        <p className="mt-4 text-on-surface-variant">Loading checkout...</p>
+      </div>
+    </div>
+  );
+}
+
+function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [authStatus, setAuthStatus] = useState<

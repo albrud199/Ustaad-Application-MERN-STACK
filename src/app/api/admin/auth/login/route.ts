@@ -35,7 +35,21 @@ export async function POST(request: NextRequest) {
     }
 
     // ===== COMPARE PASSWORDS =====
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const storedPassword = String(user.password || "");
+    const isHashedPassword = /^\$2[aby]\$\d{2}\$/.test(storedPassword);
+
+    let isPasswordValid = false;
+
+    if (isHashedPassword) {
+      isPasswordValid = await bcrypt.compare(password, storedPassword);
+    } else {
+      // Backward compatibility for legacy plain-text records.
+      isPasswordValid = password === storedPassword;
+      if (isPasswordValid) {
+        user.password = await bcrypt.hash(password, 10);
+        await user.save();
+      }
+    }
 
     if (!isPasswordValid) {
       return NextResponse.json(
@@ -71,8 +85,7 @@ export async function POST(request: NextRequest) {
     );
 
     // ===== RETURN RESPONSE =====
-    const userResponse = user.toObject();
-    delete userResponse.password;
+    const { password: _password, ...userResponse } = user.toObject();
 
     return NextResponse.json({
       message: "✅ Login successful",

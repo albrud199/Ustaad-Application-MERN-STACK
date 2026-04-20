@@ -31,10 +31,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "License plate and model are required" }, { status: 400 });
   }
 
-  user.vehicles = [...(user.vehicles || []), vehicle];
+  const existingVehicles = ((user as any).vehicles || []) as Array<Record<string, unknown>>;
+  (user as any).vehicles = [...existingVehicles, vehicle];
   await user.save();
 
-  return NextResponse.json({ message: "Vehicle added successfully", vehicles: user.vehicles });
+  return NextResponse.json({ message: "Vehicle added successfully", vehicles: (user as any).vehicles });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -49,8 +50,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Missing vehicleId" }, { status: 400 });
   }
 
-  user.vehicles = (user.vehicles || []).filter((vehicle: { vehicleId?: mongoose.Types.ObjectId }) => String(vehicle.vehicleId) !== vehicleId);
+  const currentVehicles = ((user as any).vehicles || []) as Array<{ vehicleId?: mongoose.Types.ObjectId }>;
+  (user as any).vehicles = currentVehicles.filter((vehicle) => String(vehicle.vehicleId) !== vehicleId);
   await user.save();
 
-  return NextResponse.json({ message: "Vehicle removed successfully", vehicles: user.vehicles });
+  return NextResponse.json({ message: "Vehicle removed successfully", vehicles: (user as any).vehicles });
 }

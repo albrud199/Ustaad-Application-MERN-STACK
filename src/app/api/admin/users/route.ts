@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { dbConnect, isMongoConfigured } from "@/lib/mongoose";
 import User from "@/models/User";
 
@@ -91,23 +92,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existing = await User.findOne({ email });
+    const normalizedEmail = String(email).toLowerCase();
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return NextResponse.json({ error: "User with this email already exists" }, { status: 409 });
     }
 
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+
     const user = await User.create({
       name,
-      email,
-      password,
+      email: normalizedEmail,
+      password: hashedPassword,
       role,
       phone: phone || "",
       status: "active",
       nidStatus: "pending",
     });
 
-    const userObj = user.toObject();
-    delete userObj.password;
+    const { password: _password, ...userObj } = user.toObject();
 
     return NextResponse.json({ user: userObj }, { status: 201 });
   } catch (error: unknown) {

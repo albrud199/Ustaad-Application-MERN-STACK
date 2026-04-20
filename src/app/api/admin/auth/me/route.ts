@@ -55,8 +55,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ===== RETURN USER =====
-    const userResponse = user.toObject();
-    delete userResponse.password;
+    const { password: _password, ...userResponse } = user.toObject();
 
     return NextResponse.json(userResponse);
 
