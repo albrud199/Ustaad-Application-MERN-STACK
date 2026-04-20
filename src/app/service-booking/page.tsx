@@ -5,7 +5,7 @@ import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 type ServiceRequestDraft = {
   serviceType: string;
@@ -18,6 +18,27 @@ type ServiceRequestDraft = {
 };
 
 export default function ServiceBookingPage() {
+  return (
+    <Suspense fallback={<ServiceBookingLoadingFallback />}>
+      <ServiceBookingContent />
+    </Suspense>
+  );
+}
+
+function ServiceBookingLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-surface text-on-surface">
+      <NebulaBackground />
+      <Navbar />
+      <main className="pt-32 pb-24 px-6 md:px-12 relative z-10">
+        <div className="text-on-surface-variant">Loading booking details...</div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function ServiceBookingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const repairshopId = searchParams.get("repairshopId") || "";

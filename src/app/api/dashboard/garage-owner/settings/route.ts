@@ -80,6 +80,7 @@ export async function PUT(request: NextRequest) {
       name: garageName || "",
       location: location || "",
       capacity: Number(capacity) || 0,
+      facilities: user.garage?.facilities || [],
       operatingHours: {
         open: openingHour || "08:00",
         close: closingHour || "20:00",

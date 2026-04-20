@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -9,6 +9,27 @@ import Footer from "@/components/Footer";
 import Image from "next/image";
 
 export default function RequestServicePage() {
+  return (
+    <Suspense fallback={<RequestServiceLoadingFallback />}>
+      <RequestServiceContent />
+    </Suspense>
+  );
+}
+
+function RequestServiceLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-surface text-on-surface">
+      <NebulaBackground />
+      <Navbar />
+      <main className="pt-32 pb-24 px-6 md:px-12 relative z-10">
+        <div className="text-on-surface-variant">Loading service request...</div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function RequestServiceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedRepairshopId = searchParams.get("repairshopId") || "";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -39,6 +39,27 @@ type ParkingItem = {
 };
 
 export default function GarageDetailsPage() {
+  return (
+    <Suspense fallback={<GarageDetailsLoadingFallback />}>
+      <GarageDetailsContent />
+    </Suspense>
+  );
+}
+
+function GarageDetailsLoadingFallback() {
+  return (
+    <div className="min-h-screen flex flex-col bg-surface overflow-x-hidden">
+      <NebulaBackground />
+      <Navbar />
+      <main className="pt-32 pb-24 max-w-6xl mx-auto w-full px-6 md:px-8 relative z-10">
+        <div className="text-on-surface-variant">Loading garage details...</div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function GarageDetailsContent() {
   const searchParams = useSearchParams();
   const ownerId = searchParams.get("ownerId") || "";
 

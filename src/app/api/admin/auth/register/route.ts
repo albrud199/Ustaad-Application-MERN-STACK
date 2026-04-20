@@ -80,8 +80,7 @@ export async function POST(request: NextRequest) {
 
     // ===== RETURN RESPONSE =====
     // Remove password from response
-    const userResponse = newUser.toObject();
-    delete userResponse.password;
+    const { password: _password, ...userResponse } = newUser.toObject();
 
     return NextResponse.json(
       { 

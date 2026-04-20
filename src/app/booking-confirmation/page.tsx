@@ -4,13 +4,32 @@ import NebulaBackground from "@/components/NebulaBackground";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 function formatBDT(value: number) {
   return `BDT ${value.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function BookingConfirmationPage() {
+  return (
+    <Suspense fallback={<BookingConfirmationLoadingFallback />}>
+      <BookingConfirmationContent />
+    </Suspense>
+  );
+}
+
+function BookingConfirmationLoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-surface">
+      <div className="flex flex-col items-center gap-4">
+        <span className="material-symbols-outlined text-primary text-5xl animate-pulse">lock</span>
+        <p className="text-on-surface-variant">Loading confirmation...</p>
+      </div>
+    </div>
+  );
+}
+
+function BookingConfirmationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [authStatus, setAuthStatus] = useState<"checking" | "allowed" | "redirecting">("checking");

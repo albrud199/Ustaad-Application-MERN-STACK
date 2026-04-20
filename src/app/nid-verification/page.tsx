@@ -151,6 +151,13 @@ export default function NIDVerificationPage() {
     setErrorMsg('');
     setIsSubmitting(true);
 
+    // Explicit guard for TypeScript: FormData.append does not accept null.
+    if (!nidFront || !nidBack || !selfie || !profilePicture) {
+      setErrorMsg('Please provide all required images.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append('nidFront', nidFront);
