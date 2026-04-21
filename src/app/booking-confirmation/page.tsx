@@ -57,10 +57,185 @@ function BookingConfirmationContent() {
   const start = searchParams.get("start") || "14:00";
   const end = searchParams.get("end") || "18:00";
   const currency = searchParams.get("currency") || "BDT";
+  const bookingId = searchParams.get("bookingId") || "BOOK-PENDING";
+  const transactionId = searchParams.get("transactionId") || "";
 
   const platformFee = useMemo(() => Math.max(0, hours * 10), [hours]);
   const subtotal = useMemo(() => Math.max(0, (total - platformFee) / 1.05), [total, platformFee]);
   const serviceFee = useMemo(() => subtotal * 0.05, [subtotal]);
+
+  const [pdfError, setPdfError] = useState("");
+
+  const downloadPDF = async () => {
+    setPdfError("");
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      let y = margin;
+
+      // Header background
+      doc.setFillColor(37, 37, 56);
+      doc.rect(0, 0, pageW, 40, "F");
+
+      doc.setTextColor(163, 166, 255);
+      doc.setFontSize(22);
+      doc.setFont("helvetica", "bold");
+      doc.text("USTAAD", margin, 18);
+
+      doc.setTextColor(200, 200, 220);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Smart Parking Platform", margin, 26);
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("PAYMENT RECEIPT", pageW - margin, 22, { align: "right" });
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(new Date().toLocaleDateString("en-BD", { year: "numeric", month: "long", day: "numeric" }), pageW - margin, 30, { align: "right" });
+
+      y = 55;
+
+      // Status badge
+      doc.setFillColor(34, 197, 94);
+      doc.roundedRect(margin, y - 5, 55, 10, 2, 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("PAYMENT CONFIRMED", margin + 5, y + 1.5);
+
+      y += 16;
+
+      // Booking ID
+      doc.setTextColor(100, 100, 120);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text("BOOKING ID", margin, y);
+      doc.setTextColor(30, 30, 50);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text(bookingId, margin, y + 7);
+
+      y += 20;
+      doc.setDrawColor(220, 220, 235);
+      doc.line(margin, y, pageW - margin, y);
+      y += 10;
+
+      // Booking details section
+      doc.setTextColor(30, 30, 50);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("Booking Details", margin, y);
+      y += 8;
+
+      const detailRows: [string, string][] = [
+        ["Parking Location", parkingName],
+        ["Address", location],
+        ["Date", date],
+        ["Check-in", start],
+        ["Check-out", end],
+        ["Duration", `${hours.toFixed(1)} hours`],
+        ["Currency", currency],
+      ];
+
+      doc.setFontSize(9);
+      for (const [label, value] of detailRows) {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 120);
+        doc.text(label, margin, y);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(30, 30, 50);
+        doc.text(value, pageW - margin, y, { align: "right" });
+        y += 7;
+      }
+
+      y += 5;
+      doc.setDrawColor(220, 220, 235);
+      doc.line(margin, y, pageW - margin, y);
+      y += 10;
+
+      // Pricing section
+      doc.setTextColor(30, 30, 50);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("Pricing Breakdown", margin, y);
+      y += 8;
+
+      const priceRows: [string, number][] = [
+        ["Subtotal", subtotal],
+        ["Service Fee (5%)", serviceFee],
+        [`Platform Fee (BDT 10/hr × ${hours.toFixed(1)} hrs)`, platformFee],
+      ];
+
+      doc.setFontSize(9);
+      for (const [label, amount] of priceRows) {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 120);
+        doc.text(label, margin, y);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(30, 30, 50);
+        doc.text(formatBDT(amount), pageW - margin, y, { align: "right" });
+        y += 7;
+      }
+
+      y += 4;
+      // Total row with highlight
+      doc.setFillColor(245, 245, 255);
+      doc.rect(margin, y - 4, pageW - margin * 2, 12, "F");
+      doc.setTextColor(30, 30, 50);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("Total Amount Paid", margin + 2, y + 4);
+      doc.setTextColor(99, 102, 241);
+      doc.setFontSize(13);
+      doc.text(formatBDT(total), pageW - margin - 2, y + 4, { align: "right" });
+
+      y += 20;
+      doc.setDrawColor(220, 220, 235);
+      doc.line(margin, y, pageW - margin, y);
+      y += 10;
+
+      // Transaction info
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 120);
+      doc.setFont("helvetica", "normal");
+      doc.text("Transaction ID", margin, y);
+      doc.setTextColor(30, 30, 50);
+      doc.setFont("helvetica", "bold");
+      doc.text(transactionId || "N/A", pageW - margin, y, { align: "right" });
+      y += 8;
+
+      doc.setTextColor(100, 100, 120);
+      doc.setFont("helvetica", "normal");
+      doc.text("Payment Status", margin, y);
+      doc.setTextColor(34, 197, 94);
+      doc.setFont("helvetica", "bold");
+      doc.text("PAID", pageW - margin, y, { align: "right" });
+
+      y += 16;
+
+      // Footer note
+      doc.setFillColor(245, 245, 255);
+      doc.rect(margin, y, pageW - margin * 2, 18, "F");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 120);
+      doc.setFont("helvetica", "normal");
+      doc.text("Thank you for choosing Ustaad. Present this receipt at the parking entrance.", margin + 5, y + 7);
+      doc.text("For support: support@ustaad.app  |  ustaad.app", margin + 5, y + 13);
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      doc.save(`Ustaad-Receipt-${bookingId}-${dateStr}.pdf`);
+    } catch {
+      setPdfError("Failed to generate PDF. Please try again.");
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   if (authStatus !== "allowed") {
     return (
@@ -93,7 +268,7 @@ function BookingConfirmationContent() {
               <div className="flex flex-col md:flex-row justify-between gap-6 mb-10">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-widest text-primary mb-2 block">Reservation ID</span>
-                  <h2 className="text-2xl font-[family-name:var(--font-headline)] font-bold text-on-surface">{searchParams.get("bookingId") || "BOOK-PENDING"}</h2>
+                  <h2 className="text-2xl font-[family-name:var(--font-headline)] font-bold text-on-surface">{bookingId}</h2>
                 </div>
                 <div className="md:text-right">
                   <span className="text-xs font-bold uppercase tracking-widest text-secondary mb-2 block">Status</span>
@@ -173,10 +348,13 @@ function BookingConfirmationContent() {
             </div>
 
             <div className="space-y-3">
-              <button className="w-full flex items-center justify-center gap-3 h-14 bg-gradient-to-r from-primary-dim to-primary rounded-xl font-bold text-on-primary-fixed shadow-[0_0_20px_rgba(163,166,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+              {pdfError && (
+                <p className="text-sm text-error bg-error/10 border border-error/20 rounded-xl px-4 py-3">{pdfError}</p>
+              )}
+              <button onClick={downloadPDF} className="w-full flex items-center justify-center gap-3 h-14 bg-gradient-to-r from-primary-dim to-primary rounded-xl font-bold text-on-primary-fixed shadow-[0_0_20px_rgba(163,166,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
                 <span className="material-symbols-outlined">picture_as_pdf</span> Download PDF
               </button>
-              <button className="w-full flex items-center justify-center gap-3 h-14 bg-surface-container-highest border border-outline-variant/30 rounded-xl font-bold text-on-surface hover:bg-surface-variant transition-all">
+              <button onClick={handlePrint} className="w-full flex items-center justify-center gap-3 h-14 bg-surface-container-highest border border-outline-variant/30 rounded-xl font-bold text-on-surface hover:bg-surface-variant transition-all">
                 <span className="material-symbols-outlined">print</span> Print
               </button>
               <button onClick={() => router.push("/dashboard/car-owner")} className="w-full flex items-center justify-center gap-3 h-14 mt-8 text-on-surface-variant hover:text-primary transition-all group">

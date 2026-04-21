@@ -90,6 +90,9 @@ function CheckoutContent() {
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [confirmedBookingId, setConfirmedBookingId] = useState("");
+  const [confirmedTransactionId, setConfirmedTransactionId] = useState("");
 
   const parkingId = searchParams.get("parkingId") || "";
   const parkingName = searchParams.get("parkingName") || "Selected Parking";
@@ -267,6 +270,7 @@ function CheckoutContent() {
       }
 
       // ===== STEP 2: PROCESS PAYMENT =====
+      const txnId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const paymentResponse = await fetch("/api/payments/create", {
         method: "POST",
         headers: {
@@ -277,7 +281,7 @@ function CheckoutContent() {
           bookingId,
           amount: Number(total.toFixed(2)),
           paymentMethod,
-          transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          transactionId: txnId,
         }),
       });
 
@@ -288,9 +292,10 @@ function CheckoutContent() {
         );
       }
 
-      router.push(
-        `/booking-confirmation?parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(effectiveDate)}&start=${encodeURIComponent(effectiveStartTime)}&end=${encodeURIComponent(effectiveEndTime)}`,
-      );
+      setConfirmedBookingId(bookingId);
+      setConfirmedTransactionId(txnId);
+      setShowSuccessModal(true);
+      setSubmitting(false);
     } catch (submitError) {
       setError(
         submitError instanceof Error ? submitError.message : "Checkout failed.",
@@ -298,6 +303,14 @@ function CheckoutContent() {
       setSubmitting(false);
     }
   };
+
+  const confirmationUrl = `/booking-confirmation?parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(bookingDate)}&start=${encodeURIComponent(startTime)}&end=${encodeURIComponent(endTime)}&bookingId=${encodeURIComponent(confirmedBookingId)}&transactionId=${encodeURIComponent(confirmedTransactionId)}`;
+
+  useEffect(() => {
+    if (!showSuccessModal || !confirmedBookingId) return;
+    const timer = setTimeout(() => router.push(confirmationUrl), 3000);
+    return () => clearTimeout(timer);
+  }, [showSuccessModal, confirmedBookingId, confirmationUrl, router]);
 
   if (authStatus !== "allowed") {
     return (
@@ -315,6 +328,32 @@ function CheckoutContent() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-on-background selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
       <NebulaBackground />
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-surface rounded-3xl p-10 max-w-md w-full mx-4 text-center border border-outline-variant/20 shadow-2xl">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-tr from-primary-dim to-secondary mb-6 shadow-[0_0_40px_rgba(163,166,255,0.4)]">
+              <span className="material-symbols-outlined text-5xl text-on-primary-fixed font-bold">check_circle</span>
+            </div>
+            <h2 className="text-3xl font-extrabold font-[family-name:var(--font-headline)] tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-on-surface to-primary mb-2">
+              Payment Successful!
+            </h2>
+            <p className="text-on-surface-variant mb-2">Your booking has been confirmed.</p>
+            {confirmedBookingId && (
+              <p className="text-xs font-mono text-primary mb-6">Booking ID: {confirmedBookingId}</p>
+            )}
+            <p className="text-sm text-on-surface-variant mb-8">
+              You will be redirected to your receipt shortly.
+            </p>
+            <button
+              onClick={() => router.push(confirmationUrl)}
+              className="w-full py-4 bg-gradient-to-r from-primary-fixed to-primary-dim text-on-primary-fixed font-bold rounded-2xl shadow-[0_10px_30px_rgba(163,166,255,0.2)] hover:scale-105 active:scale-95 transition-all"
+            >
+              View Receipt &amp; Download PDF
+            </button>
+          </div>
+        </div>
+      )}
 
       <nav className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-primary/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
         <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
