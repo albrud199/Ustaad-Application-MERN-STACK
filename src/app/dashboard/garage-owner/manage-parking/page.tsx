@@ -15,7 +15,7 @@ export default function ManageParking() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     spotNumber: "",
-    type: "standard" as const,
+    type: "standard" as "standard" | "compact" | "handicap",
   });
 
   const handleAddSpot = (e: React.FormEvent) => {
