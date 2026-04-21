@@ -51,9 +51,17 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // ===== VALIDATE REQUIRED FIELDS =====
-    if (!bookingId || !amount || !paymentMethod) {
+    if (!bookingId || amount === undefined || amount === null || !paymentMethod) {
       return NextResponse.json(
         { error: "Missing required fields: bookingId, amount, paymentMethod" },
+        { status: 400 }
+      );
+    }
+
+    const requestedAmount = Number(amount);
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+      return NextResponse.json(
+        { error: "Invalid payment amount" },
         { status: 400 }
       );
     }
@@ -77,13 +85,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ===== VERIFY AMOUNT MATCHES =====
-    if (Math.abs(amount - booking.totalPrice) > 0.01) {
-      return NextResponse.json(
-        { error: "Payment amount does not match booking total" },
-        { status: 400 }
-      );
-    }
+    // ===== USE BOOKING TOTAL AS SOURCE OF TRUTH =====
+    const bookingTotal = Number(booking.totalPrice || 0);
+    const amountToCharge = bookingTotal > 0 ? bookingTotal : requestedAmount;
+    const amountMismatch = Math.abs(requestedAmount - amountToCharge) > 0.01;
 
     // ===== VERIFY USER IS THE BOOKING OWNER =====
     if (booking.carOwnerId.toString() !== decoded.userId) {
@@ -109,7 +114,7 @@ export async function POST(request: NextRequest) {
       userId: decoded.userId,
       referenceType: "booking",
       referenceId: bookingId,
-      amount,
+      amount: amountToCharge,
       currency: "BDT",
       paymentMethod,
       status: "completed",
@@ -138,7 +143,7 @@ export async function POST(request: NextRequest) {
         $push: {
           paymentHistory: {
             bookingId: booking._id,
-            amount,
+            amount: amountToCharge,
             paymentMethod,
             transactionId: finalTransactionId,
             date: new Date(),
@@ -156,9 +161,11 @@ export async function POST(request: NextRequest) {
         payment: {
           _id: payment._id,
           transactionId: finalTransactionId,
-          amount,
+          amount: amountToCharge,
+          requestedAmount,
           status: "completed",
         },
+        warning: amountMismatch ? "Requested amount differed from booking total; booking total was used." : undefined,
         booking: {
           _id: booking._id,
           status: booking.status,

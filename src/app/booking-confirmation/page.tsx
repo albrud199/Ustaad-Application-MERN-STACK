@@ -10,6 +10,177 @@ function formatBDT(value: number) {
   return `BDT ${value.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+type ReceiptDetails = {
+  bookingId: string;
+  parkingName: string;
+  location: string;
+  date: string;
+  start: string;
+  end: string;
+  hours: number;
+  currency: string;
+  subtotal: number;
+  serviceFee: number;
+  platformFee: number;
+  total: number;
+};
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildReceiptHtml(details: ReceiptDetails) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ustaad Booking Receipt - ${escapeHtml(details.bookingId)}</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: #1f2937;
+      background: #f8fafc;
+    }
+    .receipt {
+      width: min(900px, 100%);
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .header {
+      padding: 24px;
+      background: linear-gradient(135deg, #27264f, #45429a);
+      color: #ffffff;
+    }
+    .brand {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      margin: 8px 0 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .content {
+      padding: 24px;
+      display: grid;
+      gap: 24px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      background: #ffffff;
+    }
+    .label {
+      margin: 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      font-weight: 700;
+    }
+    .value {
+      margin: 6px 0 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      word-break: break-word;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .total {
+      font-size: 22px;
+      font-weight: 800;
+      color: #4338ca;
+    }
+    .footer {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+    }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .receipt { border: 0; border-radius: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <article class="receipt">
+    <header class="header">
+      <h1 class="brand">Ustaad</h1>
+      <p class="subtitle">Parking Booking Receipt</p>
+    </header>
+    <section class="content">
+      <div class="grid">
+        <div class="card">
+          <p class="label">Reservation ID</p>
+          <p class="value">${escapeHtml(details.bookingId)}</p>
+        </div>
+        <div class="card">
+          <p class="label">Status</p>
+          <p class="value">Confirmed</p>
+        </div>
+        <div class="card">
+          <p class="label">Parking</p>
+          <p class="value">${escapeHtml(details.parkingName)}</p>
+        </div>
+        <div class="card">
+          <p class="label">Location</p>
+          <p class="value">${escapeHtml(details.location)}</p>
+        </div>
+        <div class="card">
+          <p class="label">Date & Time</p>
+          <p class="value">${escapeHtml(details.date)} (${escapeHtml(details.start)} - ${escapeHtml(details.end)})</p>
+        </div>
+        <div class="card">
+          <p class="label">Duration</p>
+          <p class="value">${details.hours.toFixed(1)} hours</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row"><span>Subtotal</span><strong>${formatBDT(details.subtotal)}</strong></div>
+        <div class="row"><span>Service Fee</span><strong>${formatBDT(details.serviceFee)}</strong></div>
+        <div class="row"><span>Platform Fee</span><strong>${formatBDT(details.platformFee)}</strong></div>
+        <div class="row"><span>Total Paid (${escapeHtml(details.currency)})</span><strong class="total">${formatBDT(details.total)}</strong></div>
+      </div>
+
+      <p class="footer">Generated on ${new Date().toLocaleString("en-BD")}. Thank you for booking with Ustaad.</p>
+    </section>
+  </article>
+</body>
+</html>`;
+}
+
 export default function BookingConfirmationPage() {
   return (
     <Suspense fallback={<BookingConfirmationLoadingFallback />}>
@@ -61,6 +232,66 @@ function BookingConfirmationContent() {
   const platformFee = useMemo(() => Math.max(0, hours * 10), [hours]);
   const subtotal = useMemo(() => Math.max(0, (total - platformFee) / 1.05), [total, platformFee]);
   const serviceFee = useMemo(() => subtotal * 0.05, [subtotal]);
+  const bookingId = searchParams.get("bookingId") || "BOOK-PENDING";
+
+  const receiptDetails = useMemo<ReceiptDetails>(
+    () => ({
+      bookingId,
+      parkingName,
+      location,
+      date,
+      start,
+      end,
+      hours,
+      currency,
+      subtotal,
+      serviceFee,
+      platformFee,
+      total,
+    }),
+    [bookingId, parkingName, location, date, start, end, hours, currency, subtotal, serviceFee, platformFee, total]
+  );
+
+  const openReceiptPrintWindow = () => {
+    const receiptWindow = window.open("", "_blank", "width=980,height=760");
+    if (!receiptWindow) {
+      window.alert("Pop-up blocked. Please allow pop-ups to print or download the receipt.");
+      return null;
+    }
+
+    receiptWindow.document.write(buildReceiptHtml(receiptDetails));
+    receiptWindow.document.close();
+    return receiptWindow;
+  };
+
+  const printReceiptWindow = (receiptWindow: Window) => {
+    const triggerPrint = () => {
+      receiptWindow.focus();
+      // Delay print slightly so styles/layout finish painting in the new window.
+      window.setTimeout(() => {
+        receiptWindow.print();
+      }, 300);
+    };
+
+    if (receiptWindow.document.readyState === "complete") {
+      triggerPrint();
+      return;
+    }
+
+    receiptWindow.addEventListener("load", triggerPrint, { once: true });
+  };
+
+  const handlePrint = () => {
+    const receiptWindow = openReceiptPrintWindow();
+    if (!receiptWindow) return;
+    printReceiptWindow(receiptWindow);
+  };
+
+  const handleDownloadPdf = () => {
+    const receiptWindow = openReceiptPrintWindow();
+    if (!receiptWindow) return;
+    printReceiptWindow(receiptWindow);
+  };
 
   if (authStatus !== "allowed") {
     return (
@@ -93,7 +324,7 @@ function BookingConfirmationContent() {
               <div className="flex flex-col md:flex-row justify-between gap-6 mb-10">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-widest text-primary mb-2 block">Reservation ID</span>
-                  <h2 className="text-2xl font-[family-name:var(--font-headline)] font-bold text-on-surface">{searchParams.get("bookingId") || "BOOK-PENDING"}</h2>
+                  <h2 className="text-2xl font-[family-name:var(--font-headline)] font-bold text-on-surface">{bookingId}</h2>
                 </div>
                 <div className="md:text-right">
                   <span className="text-xs font-bold uppercase tracking-widest text-secondary mb-2 block">Status</span>
@@ -173,10 +404,10 @@ function BookingConfirmationContent() {
             </div>
 
             <div className="space-y-3">
-              <button className="w-full flex items-center justify-center gap-3 h-14 bg-gradient-to-r from-primary-dim to-primary rounded-xl font-bold text-on-primary-fixed shadow-[0_0_20px_rgba(163,166,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+              <button onClick={handleDownloadPdf} className="w-full flex items-center justify-center gap-3 h-14 bg-gradient-to-r from-primary-dim to-primary rounded-xl font-bold text-on-primary-fixed shadow-[0_0_20px_rgba(163,166,255,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
                 <span className="material-symbols-outlined">picture_as_pdf</span> Download PDF
               </button>
-              <button className="w-full flex items-center justify-center gap-3 h-14 bg-surface-container-highest border border-outline-variant/30 rounded-xl font-bold text-on-surface hover:bg-surface-variant transition-all">
+              <button onClick={handlePrint} className="w-full flex items-center justify-center gap-3 h-14 bg-surface-container-highest border border-outline-variant/30 rounded-xl font-bold text-on-surface hover:bg-surface-variant transition-all">
                 <span className="material-symbols-outlined">print</span> Print
               </button>
               <button onClick={() => router.push("/dashboard/car-owner")} className="w-full flex items-center justify-center gap-3 h-14 mt-8 text-on-surface-variant hover:text-primary transition-all group">

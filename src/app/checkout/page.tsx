@@ -59,6 +59,11 @@ function getNextBookingWindow(baseDate = new Date()) {
   };
 }
 
+function mapPaymentMethodToApi(method: string) {
+  if (method === "bkash" || method === "nagad") return "wallet";
+  return method;
+}
+
 export default function CheckoutPage() {
   return (
     <Suspense fallback={<CheckoutLoadingFallback />}>
@@ -256,9 +261,12 @@ function CheckoutContent() {
       }
 
       const bookingPayload = (await bookingResponse.json()) as {
-        booking?: { _id?: string };
+        booking?: { _id?: string; totalPrice?: number };
       };
       bookingId = bookingPayload.booking?._id || "";
+      const bookingTotal = Number(bookingPayload.booking?.totalPrice || 0);
+      const payableAmount = bookingTotal > 0 ? bookingTotal : Number(total.toFixed(2));
+      const apiPaymentMethod = mapPaymentMethodToApi(paymentMethod);
 
       if (!bookingId) {
         throw new Error(
@@ -275,8 +283,8 @@ function CheckoutContent() {
         },
         body: JSON.stringify({
           bookingId,
-          amount: Number(total.toFixed(2)),
-          paymentMethod,
+          amount: payableAmount,
+          paymentMethod: apiPaymentMethod,
           transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         }),
       });
@@ -289,7 +297,7 @@ function CheckoutContent() {
       }
 
       router.push(
-        `/booking-confirmation?parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(effectiveDate)}&start=${encodeURIComponent(effectiveStartTime)}&end=${encodeURIComponent(effectiveEndTime)}`,
+        `/booking-confirmation?bookingId=${encodeURIComponent(bookingId)}&parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(effectiveDate)}&start=${encodeURIComponent(effectiveStartTime)}&end=${encodeURIComponent(effectiveEndTime)}`,
       );
     } catch (submitError) {
       setError(
