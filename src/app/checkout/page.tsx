@@ -304,7 +304,11 @@ function CheckoutContent() {
     }
   };
 
-  const confirmationUrl = `/booking-confirmation?parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(bookingDate)}&start=${encodeURIComponent(startTime)}&end=${encodeURIComponent(endTime)}&bookingId=${encodeURIComponent(confirmedBookingId)}&transactionId=${encodeURIComponent(confirmedTransactionId)}`;
+  const confirmationUrl = useMemo(
+    () =>
+      `/booking-confirmation?parkingName=${encodeURIComponent(parkingName)}&location=${encodeURIComponent(parkingLocation)}&total=${encodeURIComponent(total.toFixed(2))}&currency=BDT&hours=${encodeURIComponent(durationHours.toFixed(1))}&date=${encodeURIComponent(bookingDate)}&start=${encodeURIComponent(startTime)}&end=${encodeURIComponent(endTime)}&bookingId=${encodeURIComponent(confirmedBookingId)}&transactionId=${encodeURIComponent(confirmedTransactionId)}`,
+    [parkingName, parkingLocation, total, durationHours, bookingDate, startTime, endTime, confirmedBookingId, confirmedTransactionId],
+  );
 
   useEffect(() => {
     if (!showSuccessModal || !confirmedBookingId) return;
