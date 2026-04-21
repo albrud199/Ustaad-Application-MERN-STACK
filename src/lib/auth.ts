@@ -54,11 +54,16 @@ export function saveStoredAccounts(accounts: StoredAccount[]): void {
   localStorage.setItem("ustaad_accounts", JSON.stringify(accounts));
 }
 
-export function persistLoggedInUser(user: LoggedInUser): void {
+export function persistLoggedInUser(user: LoggedInUser, token?: string | null): void {
   if (typeof window === "undefined") return;
 
   localStorage.setItem("loggedInUser", JSON.stringify(user));
   localStorage.setItem("ustaad_logged_in", "true");
+
+  if (token) {
+    localStorage.setItem("auth_token", token);
+    document.cookie = `auth_token=${token}; path=/; max-age=2592000; SameSite=Strict`;
+  }
 }
 
 export function hasRole(requiredRole: UserRole): boolean {
@@ -78,4 +83,7 @@ export function logout(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem("loggedInUser");
   localStorage.removeItem("ustaad_logged_in");
+  localStorage.removeItem("token");
+  localStorage.removeItem("auth_token");
+  document.cookie = "auth_token=; path=/; max-age=0";
 }

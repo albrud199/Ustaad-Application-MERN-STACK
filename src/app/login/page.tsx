@@ -14,6 +14,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 type ResetStep = "email" | "newPassword" | "success";
 
+function getRedirectTarget(user: LoggedInUser, returnTo: string | null) {
+  if (returnTo && returnTo.startsWith("/")) {
+    return returnTo;
+  }
+
+  if (user.role === "admin") {
+    return "/admin";
+  }
+
+  if (user.role === "garage_owner") {
+    return "/dashboard/garage-owner";
+  }
+
+  return "/dashboard/car-owner";
+}
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,16 +60,20 @@ function LoginContent() {
     showNotification("Google Sign-In is coming soon! Please use email & password for now.");
   };
 
-  const redirectAfterLogin = (user: LoggedInUser) => {
-    if (returnTo) {
-      router.push(returnTo);
-    } else if (user.role === "admin") {
-      router.push("/admin");
-    } else if (user.role === "garage_owner") {
-      router.push("/dashboard/garage-owner");
-    } else {
-      router.push("/dashboard/car-owner");
-    }
+  const redirectAfterLogin = (user: LoggedInUser, token?: string | null) => {
+    const target = getRedirectTarget(user, returnTo);
+
+    persistLoggedInUser(user, token);
+    setFailedAttempts(0);
+    showNotification("Login successful! Redirecting...", "success");
+    router.replace(target);
+
+    // Fallback to a hard navigation if the client router gets stuck on production.
+    window.setTimeout(() => {
+      if (window.location.pathname === "/login") {
+        window.location.assign(target);
+      }
+    }, 900);
   };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -74,13 +94,6 @@ function LoginContent() {
     );
 
     if (matchedUser) {
-      persistLoggedInUser({
-        id: matchedUser.id,
-        name: matchedUser.name,
-        email: matchedUser.email,
-        role: matchedUser.role,
-      });
-      setFailedAttempts(0);
       redirectAfterLogin({
         id: matchedUser.id,
         name: matchedUser.name,
@@ -115,10 +128,8 @@ function LoginContent() {
         return;
       }
 
-      const data = (await res.json()) as { user: LoggedInUser };
-      persistLoggedInUser(data.user);
-      setFailedAttempts(0);
-      redirectAfterLogin(data.user);
+      const data = (await res.json()) as { token?: string; user: LoggedInUser };
+      redirectAfterLogin(data.user, data.token ?? null);
     } catch {
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
